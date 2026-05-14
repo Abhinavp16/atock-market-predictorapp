@@ -1,0 +1,19 @@
+{
+  "name": "lstm-insight-backend",
+  "version": "1.0.0",
+  "description": "Mock market intelligence backend for the LSTM Insight Flutter app",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "echo \"No automated backend tests configured\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}
