@@ -259,6 +259,8 @@ class AppRepository {
   Future<JsonMap> fetchWatchlist() => _get('/watchlist');
   Future<JsonMap> addWatchlistAsset(String symbol, String name, double price) =>
       _post('/watchlist', {'symbol': symbol, 'name': name, 'price': price});
+  Future<JsonMap> fetchSymbols(String query) =>
+      _get('/symbols?query=${Uri.encodeQueryComponent(query)}');
   Future<JsonMap> fetchAnalytics() => _get('/market/analytics');
   Future<JsonMap> fetchPrediction(String symbol) =>
       _get('/predictions/${symbol.toUpperCase()}');
@@ -1520,6 +1522,21 @@ class HomeDashboardScreen extends StatelessWidget {
                 SearchField(
                   placeholder:
                       data['searchPlaceholder']?.toString() ?? 'Search',
+                  readOnly: true,
+                  onTap: () async {
+                    final selected = await showSymbolSearchSheet(
+                      context,
+                      repository,
+                    );
+                    if (!context.mounted || selected == null) {
+                      return;
+                    }
+                    final symbol = selected['symbol']?.toString();
+                    if (symbol == null || symbol.isEmpty) {
+                      return;
+                    }
+                    Navigator.pushNamed(context, '/stock', arguments: symbol);
+                  },
                 ),
                 const SizedBox(height: 18),
                 ...liveCards.map(
@@ -1941,57 +1958,37 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     _future = widget.repository.fetchWatchlist();
   }
 
-  Future<void> _addAsset() async {
-    final symbolController = TextEditingController(text: 'NFLX');
-    final nameController = TextEditingController(text: 'Netflix');
-    final priceController = TextEditingController(text: '612.42');
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceLowest,
-        title: const Text('Add Asset'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: symbolController,
-              decoration: const InputDecoration(labelText: 'Symbol'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: priceController,
-              decoration: const InputDecoration(labelText: 'Price'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+  Future<void> _openSymbolSearch({required bool addToWatchlist}) async {
+    final selected = await showSymbolSearchSheet(
+      context,
+      widget.repository,
+      title: addToWatchlist
+          ? 'Add Indian Equity'
+          : 'Browse Indian Equities',
     );
-    if (submitted != true) {
+    if (!mounted || selected == null) {
       return;
     }
+
+    final symbol = selected['symbol']?.toString() ?? '';
+    if (symbol.isEmpty) {
+      return;
+    }
+
+    if (!addToWatchlist) {
+      Navigator.pushNamed(context, '/stock', arguments: symbol);
+      return;
+    }
+
     await widget.repository.addWatchlistAsset(
-      symbolController.text,
-      nameController.text,
-      double.tryParse(priceController.text) ?? 0,
+      symbol,
+      selected['displayName']?.toString() ?? symbol,
+      0,
     );
     setState(() => _future = widget.repository.fetchWatchlist());
   }
+
+  Future<void> _addAsset() => _openSymbolSearch(addToWatchlist: true);
 
   @override
   Widget build(BuildContext context) {
@@ -2019,6 +2016,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                 SearchField(
                   placeholder:
                       data['searchPlaceholder']?.toString() ?? 'Search',
+                  readOnly: true,
+                  onTap: () => _openSymbolSearch(addToWatchlist: false),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -3878,16 +3877,259 @@ class SurfaceCard extends StatelessWidget {
 }
 
 class SearchField extends StatelessWidget {
-  const SearchField({super.key, required this.placeholder});
+  const SearchField({
+    super.key,
+    required this.placeholder,
+    this.onTap,
+    this.readOnly = false,
+  });
 
   final String placeholder;
+  final VoidCallback? onTap;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      readOnly: readOnly,
+      onTap: onTap,
       decoration: InputDecoration(
         hintText: placeholder,
         prefixIcon: const Icon(Icons.search_rounded, color: AppColors.outline),
+      ),
+    );
+  }
+}
+
+Future<JsonMap?> showSymbolSearchSheet(
+  BuildContext context,
+  AppRepository repository, {
+  String title = 'Search Indian Equities',
+  String placeholder = 'Search NSE stock, company, or sector...',
+}) {
+  return showModalBottomSheet<JsonMap>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => SymbolSearchSheet(
+      repository: repository,
+      title: title,
+      placeholder: placeholder,
+    ),
+  );
+}
+
+class SymbolSearchSheet extends StatefulWidget {
+  const SymbolSearchSheet({
+    super.key,
+    required this.repository,
+    required this.title,
+    required this.placeholder,
+  });
+
+  final AppRepository repository;
+  final String title;
+  final String placeholder;
+
+  @override
+  State<SymbolSearchSheet> createState() => _SymbolSearchSheetState();
+}
+
+class _SymbolSearchSheetState extends State<SymbolSearchSheet> {
+  final TextEditingController _controller = TextEditingController();
+  late Future<JsonMap> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.repository.fetchSymbols('');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _search(String value) {
+    setState(() {
+      _future = widget.repository.fetchSymbols(value);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height * 0.82;
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: height,
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceLowest,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 56,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                onChanged: _search,
+                decoration: InputDecoration(
+                  hintText: widget.placeholder,
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AppColors.outline,
+                  ),
+                  suffixIcon: _controller.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _controller.clear();
+                            _search('');
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<JsonMap>(
+                future: _future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          snapshot.error.toString(),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final items = asListOfMaps(snapshot.data?['items']);
+                  if (items.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No matching Indian equities found.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final symbol = item['symbol']?.toString() ?? '?';
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => Navigator.pop(context, item),
+                        child: SurfaceCard(
+                          padding: const EdgeInsets.all(16),
+                          accent: AppColors.primary,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: AppColors.surfaceHigh,
+                                child: Text(
+                                  symbol.isNotEmpty ? symbol.substring(0, 1) : '?',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      symbol,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item['displayName']?.toString() ?? '',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${item['sector']} • ${item['marketCapBucket']}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 16,
+                                color: AppColors.outline,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

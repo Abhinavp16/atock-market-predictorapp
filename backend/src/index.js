@@ -5,17 +5,14 @@ const {
   user,
   onboarding,
   splash,
-  dashboard,
-  watchlist,
-  analytics,
-  stockDetails,
-  predictions,
   notifications,
   profile,
   settings,
   admin,
   appState,
 } = require("./mockData");
+const marketService = require("./marketService");
+const { findSymbolMeta, loadSymbolMaster } = require("./symbolMaster");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -23,19 +20,39 @@ const port = Number(process.env.PORT || 3000);
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", async (_req, res) => {
+  let modelService = "offline";
+  try {
+    await marketService.pythonClient.health();
+    modelService = "online";
+  } catch (_error) {
+    modelService = "offline";
+  }
+
   res.json({
     status: "ok",
     service: "lstm-insight-backend",
+    modelService,
+    universeSize: loadSymbolMaster().length,
     timestamp: new Date().toISOString(),
   });
 });
 
 app.get("/api/bootstrap", (_req, res) => {
   res.json({
-    splash,
+    splash: {
+      ...splash,
+      stats: [
+        { label: "Universe", value: `${loadSymbolMaster().length}+ stocks` },
+        { label: "Predictions", value: "7-Day Outlook" },
+        { label: "Market Focus", value: "India EOD" },
+      ],
+    },
     onboarding,
-    user,
+    user: {
+      ...user,
+      watchlistCount: appState.watchlistSymbols.length,
+    },
     nav: [
       { key: "home", label: "Home", icon: "home" },
       { key: "market", label: "Market", icon: "query_stats" },
@@ -54,7 +71,7 @@ app.post("/api/auth/login", (req, res) => {
 
   return res.json({
     token: "mock-jwt-token",
-    user,
+    user: { ...user, watchlistCount: appState.watchlistSymbols.length },
     message: "Login successful.",
   });
 });
@@ -67,71 +84,124 @@ app.post("/api/auth/register", (req, res) => {
 
   return res.status(201).json({
     token: "mock-jwt-token",
-    user: { ...user, name: fullName, email },
+    user: { ...user, name: fullName, email, watchlistCount: appState.watchlistSymbols.length },
     message: "Registration successful.",
   });
 });
 
-app.get("/api/dashboard", (_req, res) => {
-  res.json(dashboard);
+app.get("/api/symbols", async (req, res) => {
+  try {
+    const query = String(req.query.query || "");
+    const result = await marketService.searchSymbols(query);
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 });
 
-app.get("/api/watchlist", (_req, res) => {
-  res.json(appState.watchlist);
+app.get("/api/quotes/:symbol", async (req, res) => {
+  try {
+    return res.json(await marketService.getQuote(req.params.symbol));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
 });
 
-app.post("/api/watchlist", (req, res) => {
+app.get("/api/charts/:symbol", async (req, res) => {
+  try {
+    return res.json(await marketService.getChart(req.params.symbol, req.query.range || "1M"));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+});
+
+app.get("/api/company/:symbol", async (req, res) => {
+  try {
+    return res.json(await marketService.getCompany(req.params.symbol));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+});
+
+app.get("/api/dashboard", async (_req, res) => {
+  try {
+    return res.json(await marketService.buildDashboard(user, appState.watchlistSymbols));
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+app.get("/api/watchlist", async (_req, res) => {
+  try {
+    return res.json(await marketService.buildWatchlist(appState.watchlistSymbols));
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+app.post("/api/watchlist", async (req, res) => {
   const { symbol, name, price } = req.body ?? {};
-  if (!symbol || !name || typeof price !== "number") {
-    return res.status(400).json({ message: "symbol, name, and numeric price are required." });
+  const normalizedSymbol = String(symbol || "").toUpperCase().trim();
+  if (!normalizedSymbol) {
+    return res.status(400).json({ message: "symbol is required." });
   }
 
-  const asset = {
-    symbol: symbol.toUpperCase(),
-    name,
-    price,
-    changePct: 0.0,
-    signal: "Watch",
-    signalTone: "neutral",
-    sparkline: [12, 12, 12, 12, 12],
-  };
-  appState.watchlist.assets.unshift(asset);
-  appState.watchlist.trackedCount = appState.watchlist.assets.length;
-  return res.status(201).json(asset);
+  const meta = findSymbolMeta(normalizedSymbol);
+  if (!meta) {
+    return res.status(404).json({ message: `Unsupported symbol ${normalizedSymbol}.` });
+  }
+
+  if (!appState.watchlistSymbols.includes(normalizedSymbol)) {
+    appState.watchlistSymbols.unshift(normalizedSymbol);
+  }
+
+  try {
+    const quote = await marketService.getQuote(normalizedSymbol);
+    return res.status(201).json({
+      symbol: normalizedSymbol,
+      name: name || quote.displayName,
+      price: typeof price === "number" && price > 0 ? price : quote.currentPrice,
+      changePct: quote.changePct,
+      signal: "Watch",
+      signalTone: "neutral",
+      sparkline: quote.sparkline || [],
+    });
+  } catch (error) {
+    return res.status(201).json({
+      symbol: normalizedSymbol,
+      name: name || meta.displayName,
+      price: typeof price === "number" ? price : 0,
+      changePct: 0,
+      signal: "Watch",
+      signalTone: "neutral",
+      sparkline: [],
+      warning: error.message,
+    });
+  }
 });
 
-app.get("/api/market/analytics", (_req, res) => {
-  res.json(analytics);
+app.get("/api/market/analytics", async (_req, res) => {
+  try {
+    return res.json(await marketService.buildAnalytics());
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 });
 
-app.get("/api/stocks/:symbol", (req, res) => {
-  const symbol = String(req.params.symbol || "").toUpperCase();
-  if (symbol === stockDetails.symbol) {
-    return res.json(stockDetails);
+app.get("/api/stocks/:symbol", async (req, res) => {
+  try {
+    return res.json(await marketService.buildStockDetails(req.params.symbol));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
   }
-
-  const watchAsset = appState.watchlist.assets.find((asset) => asset.symbol === symbol);
-  if (!watchAsset) {
-    return res.status(404).json({ message: `No stock details found for ${symbol}.` });
-  }
-
-  return res.json({
-    ...stockDetails,
-    symbol: watchAsset.symbol,
-    companyName: watchAsset.name,
-    price: watchAsset.price,
-    changePct: watchAsset.changePct,
-    priceChange: Number(((watchAsset.price * watchAsset.changePct) / 100).toFixed(2)),
-  });
 });
 
-app.get("/api/predictions/:symbol", (req, res) => {
-  const symbol = String(req.params.symbol || "").toUpperCase();
-  const result = predictions[symbol];
-  if (!result) {
-    return res.status(404).json({ message: `No prediction data found for ${symbol}.` });
+app.get("/api/predictions/:symbol", async (req, res) => {
+  try {
+    return res.json(await marketService.getPrediction(req.params.symbol));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
   }
-  return res.json(result);
 });
 
 app.post("/api/trade", (req, res) => {
@@ -155,16 +225,19 @@ app.get("/api/notifications", (_req, res) => {
 });
 
 app.get("/api/profile", (_req, res) => {
-  res.json(profile);
+  res.json({
+    ...profile,
+    watchlistCount: appState.watchlistSymbols.length,
+  });
 });
 
 app.get("/api/settings", (_req, res) => {
-  res.json(appState.settings);
+  res.json(settings);
 });
 
 app.patch("/api/settings", (req, res) => {
   const { sectionTitle, itemLabel, value } = req.body ?? {};
-  const section = appState.settings.sections.find((item) => item.title === sectionTitle);
+  const section = settings.sections.find((item) => item.title === sectionTitle);
   const setting = section?.items.find((item) => item.label === itemLabel);
 
   if (!section || !setting) {
@@ -174,7 +247,7 @@ app.patch("/api/settings", (req, res) => {
   setting.value = value;
   return res.json({
     message: "Setting updated.",
-    settings: appState.settings,
+    settings,
   });
 });
 

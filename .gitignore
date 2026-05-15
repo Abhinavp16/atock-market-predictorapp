@@ -2,6 +2,15 @@ stitch_neural_market_predictor/
 .playwright-mcp/
 
 backend/node_modules/
+backend/*_stdout.log
+backend/*_stderr.log
+ml_service/.venv/
+ml_service/__pycache__/
+ml_service/.pytest_cache/
+ml_service/cache/
+ml_service/artifacts/
+ml_service/*_stdout.log
+ml_service/*_stderr.log
 
 flutter_after_attach.bin
 flutter_after_attach.png
