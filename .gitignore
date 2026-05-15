@@ -1,4 +1,5 @@
 stitch_neural_market_predictor/
+.playwright-mcp/
 
 backend/node_modules/
 
