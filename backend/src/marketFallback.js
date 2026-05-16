@@ -167,6 +167,8 @@ function quoteForSymbol(symbol) {
     volume: latest.volume,
     timestamp: latest.date,
     sparkline: series.slice(-7).map((point) => point.close),
+    dataSource: "simulated",
+    marketState: "SIMULATED",
   };
 }
 

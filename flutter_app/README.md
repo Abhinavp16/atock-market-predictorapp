@@ -1,4 +1,4 @@
-# flutter_app
+# NiveshIQ
 
 A new Flutter project.
 

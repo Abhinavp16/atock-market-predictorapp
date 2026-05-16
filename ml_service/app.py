@@ -23,6 +23,8 @@ ARTIFACT_DIR = ROOT / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "market_model.joblib"
 PREDICTION_CACHE_PATH = ARTIFACT_DIR / "predictions.json"
 LOOKBACK_DAYS = 320
+HISTORY_CACHE_MAX_AGE_MINUTES = 180
+QUOTE_CACHE_MAX_AGE_SECONDS = 90
 LARGE_CAP_SYMBOLS = {
     "ADANIENT",
     "ADANIGREEN",
@@ -111,6 +113,20 @@ def hash_string(value: str) -> int:
 
 def clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
+
+
+def utc_now() -> datetime:
+    return datetime.utcnow()
+
+
+def is_cache_fresh(timestamp: str | None, *, max_age_seconds: int) -> bool:
+    if not timestamp:
+        return False
+    try:
+        cached_at = datetime.fromisoformat(timestamp)
+    except ValueError:
+        return False
+    return (utc_now() - cached_at).total_seconds() <= max_age_seconds
 
 
 def normalize_sector(industry: str) -> str:
@@ -264,18 +280,26 @@ class MarketEngine:
     def _cache_path(self, symbol: str) -> Path:
         return CACHE_DIR / f"{symbol.upper()}_history.json"
 
+    def _quote_cache_path(self, symbol: str) -> Path:
+        return CACHE_DIR / f"{symbol.upper()}_quote.json"
+
     def _download_yahoo_history(self, symbol: str) -> pd.DataFrame | None:
         ticker = f"{symbol.upper()}.NS"
         cache_path = self._cache_path(symbol)
         if cache_path.exists():
             cached = json.loads(cache_path.read_text(encoding="utf-8"))
-            if cached.get("fetchedAt") == datetime.now().strftime("%Y-%m-%d"):
+            if is_cache_fresh(cached.get("fetchedAt"), max_age_seconds=HISTORY_CACHE_MAX_AGE_MINUTES * 60):
                 return pd.DataFrame(cached["series"])
 
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
         params = {"range": "2y", "interval": "1d", "includeAdjustedClose": "true"}
         try:
-            response = requests.get(url, params=params, timeout=8)
+            response = requests.get(
+                url,
+                params=params,
+                timeout=8,
+                headers={"User-Agent": "NiveshIQ/1.0"},
+            )
             response.raise_for_status()
             payload = response.json()
             result = payload["chart"]["result"][0]
@@ -303,27 +327,104 @@ class MarketEngine:
             if len(series) < 120:
                 return None
             cache_path.write_text(
-                json.dumps({"fetchedAt": datetime.now().strftime("%Y-%m-%d"), "series": series}),
+                json.dumps({"fetchedAt": utc_now().isoformat(), "series": series}),
                 encoding="utf-8",
             )
             return pd.DataFrame(series)
         except Exception:
             return None
 
-    def history(self, symbol: str) -> pd.DataFrame:
+    def _download_yahoo_quote(self, symbol: str) -> dict[str, Any] | None:
+        ticker = f"{symbol.upper()}.NS"
+        cache_path = self._quote_cache_path(symbol)
+        if cache_path.exists():
+            cached = json.loads(cache_path.read_text(encoding="utf-8"))
+            if is_cache_fresh(cached.get("fetchedAt"), max_age_seconds=QUOTE_CACHE_MAX_AGE_SECONDS):
+                return cached.get("quote")
+
+        url = "https://query1.finance.yahoo.com/v7/finance/quote"
+        params = {"symbols": ticker}
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=6,
+                headers={"User-Agent": "NiveshIQ/1.0"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            results = payload.get("quoteResponse", {}).get("result", [])
+            if not results:
+                return None
+            quote = results[0]
+            current_price = quote.get("regularMarketPrice")
+            previous_close = quote.get("regularMarketPreviousClose")
+            if current_price in (None, 0) or previous_close in (None, 0):
+                return None
+            regular_market_time = quote.get("regularMarketTime")
+            normalized = {
+                "currentPrice": round(float(current_price), 2),
+                "previousClose": round(float(previous_close), 2),
+                "open": round(float(quote.get("regularMarketOpen") or current_price), 2),
+                "high": round(float(quote.get("regularMarketDayHigh") or current_price), 2),
+                "low": round(float(quote.get("regularMarketDayLow") or current_price), 2),
+                "volume": int(quote.get("regularMarketVolume") or 0),
+                "marketState": quote.get("marketState") or "REGULAR",
+                "timestamp": datetime.utcfromtimestamp(regular_market_time).isoformat()
+                if regular_market_time
+                else utc_now().isoformat(),
+            }
+            cache_path.write_text(
+                json.dumps({"fetchedAt": utc_now().isoformat(), "quote": normalized}),
+                encoding="utf-8",
+            )
+            return normalized
+        except Exception:
+            return None
+
+    def history_bundle(self, symbol: str) -> tuple[pd.DataFrame, str]:
         symbol = symbol.upper()
         data = self._download_yahoo_history(symbol)
         if data is None or data.empty:
-            data = self._synthetic_series(symbol)
-        return data.tail(LOOKBACK_DAYS).reset_index(drop=True)
+            return self._synthetic_series(symbol).tail(LOOKBACK_DAYS).reset_index(drop=True), "simulated"
+        return data.tail(LOOKBACK_DAYS).reset_index(drop=True), "yahoo_eod"
+
+    def history(self, symbol: str) -> pd.DataFrame:
+        return self.history_bundle(symbol)[0]
 
     def quote(self, symbol: str) -> dict[str, Any]:
         meta = self.ensure_symbol(symbol)
-        history = self.history(symbol)
+        history, history_source = self.history_bundle(symbol)
         latest = history.iloc[-1]
         previous = history.iloc[-2]
-        change = float(latest["close"] - previous["close"])
-        change_pct = (change / float(previous["close"])) * 100 if float(previous["close"]) else 0.0
+        live_quote = self._download_yahoo_quote(symbol)
+        if live_quote:
+            current_price = float(live_quote["currentPrice"])
+            previous_close = float(live_quote["previousClose"] or previous["close"])
+            change = current_price - previous_close
+            change_pct = (change / previous_close) * 100 if previous_close else 0.0
+            sparkline_seed = history.tail(6)["close"].round(2).tolist()
+            sparkline = [*sparkline_seed, round(current_price, 2)]
+            data_source = "live"
+            timestamp = live_quote["timestamp"]
+            market_state = live_quote.get("marketState") or "REGULAR"
+            open_price = float(live_quote["open"])
+            high_price = float(live_quote["high"])
+            low_price = float(live_quote["low"])
+            volume = int(live_quote["volume"])
+        else:
+            current_price = float(latest["close"])
+            previous_close = float(previous["close"])
+            change = current_price - previous_close
+            change_pct = (change / previous_close) * 100 if previous_close else 0.0
+            sparkline = history.tail(7)["close"].round(2).tolist()
+            data_source = history_source
+            timestamp = str(latest["date"])
+            market_state = "EOD" if history_source == "yahoo_eod" else "SIMULATED"
+            open_price = float(latest["open"])
+            high_price = float(latest["high"])
+            low_price = float(latest["low"])
+            volume = int(latest["volume"])
         return {
             "symbol": meta.symbol,
             "exchange": meta.exchange,
@@ -331,16 +432,18 @@ class MarketEngine:
             "sector": meta.sector,
             "marketCapBucket": meta.market_cap_bucket,
             "currency": "INR",
-            "currentPrice": round(float(latest["close"]), 2),
-            "previousClose": round(float(previous["close"]), 2),
+            "currentPrice": round(current_price, 2),
+            "previousClose": round(previous_close, 2),
             "change": round(change, 2),
             "changePct": round(change_pct, 2),
-            "open": round(float(latest["open"]), 2),
-            "high": round(float(latest["high"]), 2),
-            "low": round(float(latest["low"]), 2),
-            "volume": int(latest["volume"]),
-            "timestamp": str(latest["date"]),
-            "sparkline": history.tail(7)["close"].round(2).tolist(),
+            "open": round(open_price, 2),
+            "high": round(high_price, 2),
+            "low": round(low_price, 2),
+            "volume": volume,
+            "timestamp": timestamp,
+            "sparkline": sparkline,
+            "dataSource": data_source,
+            "marketState": market_state,
         }
 
     def chart(self, symbol: str, range_name: str) -> dict[str, Any]:

@@ -1,7 +1,7 @@
 {
-  "name": "lstm-insight-backend",
+  "name": "niveshiq-backend",
   "version": "1.0.0",
-  "description": "Mock market intelligence backend for the LSTM Insight Flutter app",
+  "description": "Backend API for the NiveshIQ Flutter app",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

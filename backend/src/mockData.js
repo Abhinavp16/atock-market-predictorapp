@@ -4,7 +4,7 @@ const user = {
   id: "usr_pradeep_kumar",
   name: "Pradeep Kumar",
   firstName: "Pradeep",
-  email: "pradeep.kumar@lstminsight.in",
+  email: "pradeep@niveshiq.in",
   role: "India Markets Pro",
   avatarInitials: "PK",
   location: "Bengaluru, India",
@@ -51,8 +51,8 @@ const onboarding = [
 ];
 
 const splash = {
-  title: "Oracle AI",
-  subtitle: "Smart Stock Prediction Powered by LSTM Intelligence",
+  title: "NiveshIQ",
+  subtitle: "AI Market Intelligence for Indian Equities",
   ctas: ["Get Started", "View Live Market"],
   stats: [
     { label: "Universe", value: "200+ stocks" },

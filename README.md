@@ -1,6 +1,6 @@
-# Stock Price Predictor
+# NiveshIQ
 
-India-focused mobile stock prediction project with:
+India-focused mobile stock prediction project branded as `NiveshIQ`, with:
 
 - `flutter_app` for the Flutter client
 - `backend` for the Node.js app-facing API

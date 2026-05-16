@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 
 typedef JsonMap = Map<String, dynamic>;
+const appBrandName = 'NiveshIQ';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,7 +71,7 @@ class LstmInsightApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'LSTM Insight',
+      title: appBrandName,
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
@@ -335,22 +336,12 @@ class ScreenScaffold extends StatelessWidget {
                             (_) => false,
                           ),
                       borderRadius: BorderRadius.circular(12),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Icon(
-                            Icons.analytics_outlined,
+                          BrandLockup(
                             color: AppColors.primary,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'LSTM Insight',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  color: AppColors.primary,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            logoSize: 22,
+                            fontSize: 20,
                           ),
                         ],
                       ),
@@ -591,10 +582,11 @@ class SplashScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.auto_awesome,
-                                color: AppColors.primary,
-                                size: 72,
+                              child: const Center(
+                                child: BrandMark(
+                                  size: 82,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                           ),
@@ -620,7 +612,7 @@ class SplashScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          splash['title']?.toString() ?? 'Oracle AI',
+                          splash['title']?.toString() ?? appBrandName,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.displayLarge
                               ?.copyWith(
@@ -757,19 +749,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.analytics_outlined,
+                      const BrandLockup(
                         color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'LSTM Insight',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: AppColors.primary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        logoSize: 22,
+                        fontSize: 20,
                       ),
                       const Spacer(),
                       TextButton(
@@ -1054,18 +1037,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.analytics_outlined,
+                  const BrandLockup(
                     color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'LSTM Insight',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    logoSize: 22,
+                    fontSize: 20,
                   ),
                   const Spacer(),
                   TextButton(
@@ -1085,7 +1060,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'Advanced Neural Forecasting',
+                  'Signal-Driven Market Intelligence',
                   style: Theme.of(
                     context,
                   ).textTheme.labelMedium?.copyWith(color: AppColors.secondary),
@@ -1272,7 +1247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 28),
               Center(
                 child: Text(
-                  '© 2024 LSTM Insight. All rights reserved. Precise memory, infinite potential.',
+                  '© 2026 NiveshIQ. All rights reserved. Built for disciplined, data-led investing.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: AppColors.onSurfaceVariant,
@@ -1297,7 +1272,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController(text: 'alex@lstminsight.ai');
+  final _email = TextEditingController(text: 'pradeep@niveshiq.in');
   final _password = TextEditingController(text: 'password!');
   bool _loading = false;
   String? _message;
@@ -1350,15 +1325,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: AppColors.primaryContainer,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Icon(
-                      Icons.analytics_outlined,
-                      color: AppColors.onPrimaryContainer,
-                      size: 32,
+                    child: const Center(
+                      child: BrandMark(
+                        size: 32,
+                        color: AppColors.onPrimaryContainer,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 22),
                   Text(
-                    'LSTM Insight',
+                    appBrandName,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w700,
@@ -1366,7 +1342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Institutional Access',
+                    'Modern Market Intelligence',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 28),
@@ -1476,10 +1452,29 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class HomeDashboardScreen extends StatelessWidget {
+class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key, required this.repository});
 
   final AppRepository repository;
+
+  @override
+  State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
+  late Future<JsonMap> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.repository.fetchDashboard();
+  }
+
+  Future<void> _refreshDashboard() async {
+    final future = widget.repository.fetchDashboard();
+    setState(() => _future = future);
+    await future;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1495,18 +1490,33 @@ class HomeDashboardScreen extends StatelessWidget {
         ),
       ],
       child: AsyncPage(
-        future: repository.fetchDashboard(),
+        future: _future,
         builder: (context, data) {
           final liveCards = asListOfMaps(data['liveCards']);
+          final highReturn = asMap(data['highReturn']);
+          final highReturnItems = asListOfMaps(highReturn['items']);
           final trending = asListOfMaps(data['trendingInsights']);
           final watchlist = asListOfMaps(data['watchlistPreview']);
           final aiPrediction = asMap(data['aiPrediction']);
           final featured = asMap(data['featuredAnalysis']);
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          final highReturnSourceLabel =
+              highReturn['sourceLabel']?.toString() ?? '';
+          final highReturnBadgeColor = highReturnSourceLabel == 'Live'
+              ? AppColors.success
+              : highReturnSourceLabel == 'Mostly Live'
+              ? AppColors.secondary
+              : highReturnSourceLabel == 'Market Closed'
+              ? AppColors.tertiaryContainer
+              : AppColors.onSurfaceVariant;
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _refreshDashboard,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Text(
                   data['greeting']?.toString() ?? '',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -1526,7 +1536,7 @@ class HomeDashboardScreen extends StatelessWidget {
                   onTap: () async {
                     final selected = await showSymbolSearchSheet(
                       context,
-                      repository,
+                      widget.repository,
                     );
                     if (!context.mounted || selected == null) {
                       return;
@@ -1711,6 +1721,256 @@ class HomeDashboardScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                  if (highReturnItems.isNotEmpty) ...[
+                  const SizedBox(height: 26),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          highReturn['title']?.toString() ?? 'High Return',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (highReturnSourceLabel.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: highReturnSourceLabel == 'Live'
+                                ? AppColors.success.withValues(alpha: 0.12)
+                                : highReturnBadgeColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: highReturnBadgeColor.withValues(
+                                alpha: 0.24,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            highReturnSourceLabel,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: highReturnBadgeColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    highReturn['subtitle']?.toString() ??
+                        'Top-return ideas ranked from the latest tracked Indian market snapshot',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  SurfaceCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  'Company',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 3,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    'Market price',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelMedium?.copyWith(
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ...highReturnItems.asMap().entries.map((entry) {
+                          final item = entry.value;
+                          final changePct = number(item['changePct']);
+                          final priceChange = number(item['priceChange']);
+                          final toneColor = changePct >= 0
+                              ? AppColors.success
+                              : AppColors.error;
+                          final changeLabel =
+                              '${priceChange >= 0 ? '+' : '-'}${money(priceChange.abs(), decimals: 2, compact: false)} (${changePct.abs().toStringAsFixed(2)}%)';
+                          final priceLabel = money(
+                            number(item['price']),
+                            decimals: 2,
+                            compact: false,
+                          );
+
+                          return InkWell(
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/stock',
+                              arguments: item['symbol']?.toString(),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 18,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: entry.key == 0
+                                      ? BorderSide.none
+                                      : const BorderSide(
+                                          color: AppColors.outlineSoft,
+                                        ),
+                                ),
+                              ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final compact = constraints.maxWidth < 360;
+                                  final sparklineWidth = compact ? 72.0 : 92.0;
+                                  final rightColumnWidth = compact ? 124.0 : 148.0;
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item['name']?.toString() ??
+                                                  item['symbol']?.toString() ??
+                                                  '',
+                                              maxLines: compact ? 3 : 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                    height: 1.18,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              item['symbol']?.toString() ?? '',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    color: AppColors
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(width: compact ? 10 : 14),
+                                      SizedBox(
+                                        width: sparklineWidth,
+                                        height: 42,
+                                        child: Stack(
+                                          children: [
+                                            Positioned.fill(
+                                              child: Align(
+                                                alignment: Alignment.center,
+                                                child: Container(
+                                                  height: 1,
+                                                  color: AppColors.outlineSoft,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: SparklineChart(
+                                                values: numbers(
+                                                  item['sparkline'],
+                                                ),
+                                                color: toneColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(width: compact ? 10 : 14),
+                                      SizedBox(
+                                        width: rightColumnWidth,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment:
+                                                  Alignment.centerRight,
+                                              child: Text(
+                                                priceLabel,
+                                                textAlign: TextAlign.right,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment:
+                                                  Alignment.centerRight,
+                                              child: Text(
+                                                changeLabel,
+                                                textAlign: TextAlign.right,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelMedium
+                                                    ?.copyWith(
+                                                      color: toneColor,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 26),
                 Row(
                   children: [
@@ -1931,7 +2191,8 @@ class HomeDashboardScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -2623,7 +2884,7 @@ class PredictionScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Oracle Synthesis',
+                        '$appBrandName Synthesis',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -2867,7 +3128,7 @@ class _StockDetailsScreenState extends State<StockDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'LSTM Prediction Accuracy',
+                                '$appBrandName Prediction Confidence',
                                 style: Theme.of(context).textTheme.labelMedium,
                               ),
                               const SizedBox(height: 6),
@@ -2943,7 +3204,7 @@ class _StockDetailsScreenState extends State<StockDetailsScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          'LSTM Predictive Forecast Active',
+                          '$appBrandName Forecast Engine Active',
                           style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(color: AppColors.primary),
                         ),
@@ -3735,7 +3996,7 @@ class AdminPanelScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'LSTM Model Metrics',
+                        '$appBrandName Model Metrics',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -3899,6 +4160,113 @@ class SearchField extends StatelessWidget {
       ),
     );
   }
+}
+
+class BrandLockup extends StatelessWidget {
+  const BrandLockup({
+    super.key,
+    this.color = AppColors.primary,
+    this.logoSize = 24,
+    this.fontSize = 20,
+  });
+
+  final Color color;
+  final double logoSize;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BrandMark(size: logoSize, color: color),
+        const SizedBox(width: 10),
+        Text(
+          appBrandName,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: color,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: BrandMarkPainter(color),
+    );
+  }
+}
+
+class BrandMarkPainter extends CustomPainter {
+  BrandMarkPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()..color = color;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.1
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final leftBar = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.1,
+        size.height * 0.18,
+        size.width * 0.16,
+        size.height * 0.62,
+      ),
+      Radius.circular(size.width * 0.08),
+    );
+    final middleBar = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.42,
+        size.height * 0.26,
+        size.width * 0.16,
+        size.height * 0.54,
+      ),
+      Radius.circular(size.width * 0.08),
+    );
+    final rightBar = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.74,
+        size.height * 0.1,
+        size.width * 0.16,
+        size.height * 0.7,
+      ),
+      Radius.circular(size.width * 0.08),
+    );
+
+    canvas.drawRRect(leftBar, fill);
+    canvas.drawRRect(middleBar, fill);
+    canvas.drawRRect(rightBar, fill);
+
+    final path = Path()
+      ..moveTo(size.width * 0.18, size.height * 0.72)
+      ..lineTo(size.width * 0.5, size.height * 0.34)
+      ..lineTo(size.width * 0.82, size.height * 0.22)
+      ..lineTo(size.width * 0.9, size.height * 0.08);
+    canvas.drawPath(path, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant BrandMarkPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 Future<JsonMap?> showSymbolSearchSheet(
@@ -4744,7 +5112,7 @@ class OnboardingHeroTwo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Live LSTM Stream',
+                  'Live Signal Stream',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),

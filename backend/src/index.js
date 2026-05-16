@@ -31,7 +31,7 @@ app.get("/api/health", async (_req, res) => {
 
   res.json({
     status: "ok",
-    service: "lstm-insight-backend",
+    service: "niveshiq-backend",
     modelService,
     universeSize: loadSymbolMaster().length,
     timestamp: new Date().toISOString(),
@@ -268,5 +268,5 @@ app.use((_req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`LSTM Insight backend listening on http://localhost:${port}`);
+  console.log(`NiveshIQ backend listening on http://localhost:${port}`);
 });

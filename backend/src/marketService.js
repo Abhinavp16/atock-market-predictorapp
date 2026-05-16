@@ -108,10 +108,15 @@ async function buildWatchlist(symbols) {
 
 async function buildDashboard(user, watchlistSymbols) {
   const highlighted = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "SBIN", "ICICIBANK", "LT"];
-  const [quotes, heroPrediction] = await Promise.all([
-    Promise.all(highlighted.map((symbol) => getQuote(symbol))),
+  const dashboardUniverse = Array.from(
+    new Set([...highlighted, ...loadSymbolMaster().slice(0, 24).map((item) => item.symbol)]),
+  );
+  const [allQuotes, heroPrediction] = await Promise.all([
+    Promise.all(dashboardUniverse.map((symbol) => getQuote(symbol))),
     getPrediction("INFY"),
   ]);
+  const quoteMap = new Map(allQuotes.map((quote) => [quote.symbol, quote]));
+  const quotes = highlighted.map((symbol) => quoteMap.get(symbol)).filter(Boolean);
   const liveCards = quotes.slice(0, 2).map((quote, index) => ({
     symbol: quote.symbol,
     name: quote.displayName,
@@ -130,6 +135,38 @@ async function buildDashboard(user, watchlistSymbols) {
       changePct: quote.changePct,
     };
   });
+  const positiveHighReturn = allQuotes
+    .filter((quote) => Number.isFinite(quote.changePct) && quote.changePct > 0)
+    .sort((left, right) => right.changePct - left.changePct);
+  const highReturnSource = positiveHighReturn.length
+    ? positiveHighReturn
+    : [...allQuotes].sort((left, right) => right.changePct - left.changePct);
+  const topHighReturn = highReturnSource.slice(0, 8);
+  const liveCount = topHighReturn.filter((quote) => (quote.dataSource || "simulated") === "live").length;
+  const eodCount = topHighReturn.filter((quote) => (quote.dataSource || "simulated") === "yahoo_eod").length;
+  const highReturn = {
+    title: "High Return",
+    subtitle: "Top-return ideas ranked from the latest tracked Indian market snapshot",
+    sourceLabel:
+      liveCount >= 6
+        ? "Live"
+        : liveCount > 0
+          ? "Mostly Live"
+          : eodCount > 0
+            ? "Market Closed"
+            : "Simulated",
+    items: topHighReturn.map((quote) => ({
+      symbol: quote.symbol,
+      name: quote.displayName,
+      price: quote.currentPrice,
+      priceChange: quote.change,
+      changePct: quote.changePct,
+      sparkline: quote.sparkline || [],
+      dataSource: quote.dataSource || "simulated",
+      marketState: quote.marketState || "SIMULATED",
+      timestamp: quote.timestamp,
+    })),
+  };
   const ranked = [...quotes].sort((left, right) => Math.abs(right.changePct) - Math.abs(left.changePct)).slice(0, 3);
 
   return {
@@ -137,6 +174,7 @@ async function buildDashboard(user, watchlistSymbols) {
     subtitle: "Broad Indian equity coverage and daily model refreshes are ready.",
     searchPlaceholder: "Search NSE stock, sector, or company...",
     liveCards,
+    highReturn,
     aiPrediction: {
       symbol: heroPrediction.symbol,
       badge: "AI PREDICTION",
