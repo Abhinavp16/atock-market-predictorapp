@@ -1,2 +1,1 @@
-Terminate batch job (Y/N)? 
-Terminate batch job (Y/N)? 
+{"level":30,"time":1779130432434,"pid":35776,"hostname":"DESKTOP-R0J4BSH","msg":"NiveshIQ backend listening on http://localhost:3000"}

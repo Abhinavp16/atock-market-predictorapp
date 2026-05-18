@@ -161,7 +161,7 @@ class AppRepository {
       try {
         final response = await request(
           baseUrl,
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 20));
         _activeBaseUrl = baseUrl;
         return response;
       } on Exception catch (error) {

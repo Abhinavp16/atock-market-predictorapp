@@ -10,7 +10,7 @@ import 'core/providers.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 const appBrandName = 'NiveshIQ';
-const appLogoAssetPath = 'assets/images/logo_light.png';
+const appLogoAssetPath = 'assets/images/logo.png';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -196,7 +196,7 @@ class AppColors {
   static const page = Color(0xFFF8FAFC);
 }
 
-enum NavTab { home, market, news, predict, watch, profile }
+enum NavTab { home, market, news, watch, profile }
 
 class AppLaunchGate extends StatelessWidget {
   const AppLaunchGate({super.key, required this.repository});
@@ -332,7 +332,6 @@ class NavItem extends StatelessWidget {
       NavTab.home => '/home',
       NavTab.market => '/market',
       NavTab.news => '/news',
-      NavTab.predict => '/predict',
       NavTab.watch => '/watchlist',
       NavTab.profile => '/profile',
     };
@@ -340,7 +339,6 @@ class NavItem extends StatelessWidget {
       NavTab.home => Icons.home_outlined,
       NavTab.market => Icons.query_stats,
       NavTab.news => Icons.newspaper_outlined,
-      NavTab.predict => Icons.online_prediction_outlined,
       NavTab.watch => Icons.visibility_outlined,
       NavTab.profile => Icons.person_outline,
     };
@@ -348,7 +346,6 @@ class NavItem extends StatelessWidget {
       NavTab.home => 'Home',
       NavTab.market => 'Market',
       NavTab.news => 'News',
-      NavTab.predict => 'Predict',
       NavTab.watch => 'Watch',
       NavTab.profile => 'Profile',
     };
@@ -362,8 +359,8 @@ class NavItem extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
           color: active ? AppColors.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
@@ -374,16 +371,21 @@ class NavItem extends StatelessWidget {
             Icon(
               icon,
               color: active ? AppColors.onPrimary : AppColors.onSurfaceVariant,
-              size: 22,
+              size: 21,
             ),
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: active
                     ? AppColors.onPrimary
                     : AppColors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
               ),
             ),
           ],
@@ -2192,108 +2194,116 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  SurfaceCard(
-                    padding: const EdgeInsets.all(18),
-                    accent: AppColors.primary,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            SignalPill(
-                              label:
-                                  aiPrediction['badge']?.toString() ??
-                                  'AI PREDICTION',
-                              tone: SignalTone.primary,
-                            ),
-                            Text(
-                              aiPrediction['symbol']?.toString() ?? '',
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(color: AppColors.primary),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          aiPrediction['title']?.toString() ?? '',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: (compactHome
-                                  ? Theme.of(context).textTheme.titleLarge
-                                  : Theme.of(context).textTheme.headlineSmall)
-                              ?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                height: 1.15,
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      '/prediction-detail',
+                      arguments: aiPrediction['symbol']?.toString() ?? 'INFY',
+                    ),
+                    child: SurfaceCard(
+                      padding: const EdgeInsets.all(18),
+                      accent: AppColors.primary,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              SignalPill(
+                                label:
+                                    aiPrediction['badge']?.toString() ??
+                                    'AI PREDICTION',
+                                tone: SignalTone.primary,
                               ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          aiPrediction['description']?.toString() ?? '',
-                          maxLines: compactHome ? 4 : 5,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(height: 1.45),
-                        ),
-                        const SizedBox(height: 16),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            constraints: BoxConstraints(
-                              maxWidth: compactHome ? 200 : 230,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Confidence',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelMedium,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ],
+                              Text(
+                                aiPrediction['symbol']?.toString() ?? '',
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            aiPrediction['title']?.toString() ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: (compactHome
+                                    ? Theme.of(context).textTheme.titleLarge
+                                    : Theme.of(context).textTheme.headlineSmall)
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            aiPrediction['description']?.toString() ?? '',
+                            maxLines: compactHome ? 4 : 5,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(height: 1.45),
+                          ),
+                          const SizedBox(height: 16),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth: compactHome ? 200 : 230,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Confidence',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelMedium,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 14),
-                                const Icon(
-                                  Icons.online_prediction_outlined,
-                                  color: AppColors.primary,
-                                  size: 24,
-                                ),
-                              ],
+                                  const SizedBox(width: 14),
+                                  const Icon(
+                                    Icons.online_prediction_outlined,
+                                    color: AppColors.primary,
+                                    size: 24,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 26),
@@ -2536,104 +2546,183 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                       ),
                       borderRadius: BorderRadius.circular(18),
                       child: SurfaceCard(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(18),
                         accent: AppColors.secondary,
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: 26,
-                              backgroundColor: AppColors.surfaceHigh,
-                              child: Text(
-                                ((item['symbol']?.toString() ?? '?').isNotEmpty)
-                                    ? item['symbol']!.toString().substring(0, 1)
-                                    : '?',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['symbol']?.toString() ?? '',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.w500),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item['name']?.toString() ?? '',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  money(
-                                    number(item['price']),
-                                    decimals: 2,
-                                    compact: false,
-                                  ),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 6),
-                                SignalPill(
-                                  label: signedPercent(
-                                    number(item['changePct']),
-                                  ),
-                                  tone: number(item['changePct']) > 0
-                                      ? SignalTone.positive
-                                      : number(item['changePct']) < 0
-                                      ? SignalTone.negative
-                                      : SignalTone.neutral,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Icon(
-                                  Icons.online_prediction_outlined,
-                                  color: signalToneFromText(
-                                    item['signalTone']?.toString(),
-                                  ).color,
-                                ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  width: 72,
+                                CircleAvatar(
+                                  radius: 26,
+                                  backgroundColor: AppColors.surfaceHigh,
                                   child: Text(
-                                    item['signal']?.toString().toUpperCase() ??
-                                        '',
-                                    textAlign: TextAlign.right,
+                                    ((item['symbol']?.toString() ?? '?')
+                                            .isNotEmpty)
+                                        ? item['symbol']!
+                                            .toString()
+                                            .substring(0, 1)
+                                        : '?',
                                     style: Theme.of(context)
                                         .textTheme
-                                        .labelMedium
+                                        .headlineMedium
                                         ?.copyWith(
-                                          color: signalToneFromText(
-                                            item['signalTone']?.toString(),
-                                          ).color,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                   ),
                                 ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['symbol']?.toString() ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.05,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        item['name']?.toString() ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color:
+                                                  AppColors.onSurfaceVariant,
+                                              height: 1.35,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Live Price',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      money(
+                                        number(item['price']),
+                                        decimals: 2,
+                                        compact: false,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.onSurface,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    SignalPill(
+                                      label: signedPercent(
+                                        number(item['changePct']),
+                                      ),
+                                      tone: number(item['changePct']) > 0
+                                          ? SignalTone.positive
+                                          : number(item['changePct']) < 0
+                                          ? SignalTone.negative
+                                          : SignalTone.neutral,
+                                    ),
+                                  ],
+                                ),
                               ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: signalToneFromText(
+                                        item['signalTone']?.toString(),
+                                      ).color.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.online_prediction_outlined,
+                                      color: signalToneFromText(
+                                        item['signalTone']?.toString(),
+                                      ).color,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Signal',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelMedium,
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          item['signal']?.toString() ??
+                                              'Neutral',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                color: signalToneFromText(
+                                                  item['signalTone']
+                                                      ?.toString(),
+                                                ).color,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Tap to open',
+                                    style: Theme.of(context).textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -3445,7 +3534,7 @@ class PredictionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenScaffold(
-      activeTab: NavTab.predict,
+      activeTab: null,
       actions: [
         IconButton(
           onPressed: () => Navigator.pushNamed(context, '/notifications'),
@@ -4849,16 +4938,6 @@ class ProfileScreen extends StatelessWidget {
                             onTap: () => Navigator.pushNamed(
                               context,
                               '/notifications',
-                            ),
-                          ),
-                          ProfileActionCard(
-                            width: heroGridWidth,
-                            icon: Icons.online_prediction_outlined,
-                            title: 'Predict',
-                            subtitle: 'Model outlook',
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              '/predict',
                             ),
                           ),
                           ProfileActionCard(

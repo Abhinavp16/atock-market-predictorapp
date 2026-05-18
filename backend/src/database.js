@@ -39,7 +39,8 @@ class LocalDatabaseProvider {
       return;
     }
     const raw = fs.readFileSync(LOCAL_DB_PATH, "utf8");
-    this.state = raw ? JSON.parse(raw) : this.defaultState();
+    this.state = this.normalizeState(raw ? JSON.parse(raw) : this.defaultState());
+    this.persist();
   }
 
   defaultState() {
@@ -54,6 +55,17 @@ class LocalDatabaseProvider {
       alerts: [],
       screenerPresets: [],
     };
+  }
+
+  normalizeState(state) {
+    const defaults = this.defaultState();
+    const normalized = state && typeof state === "object" ? state : {};
+    for (const [key, fallback] of Object.entries(defaults)) {
+      if (!Array.isArray(normalized[key])) {
+        normalized[key] = [...fallback];
+      }
+    }
+    return normalized;
   }
 
   persist() {
