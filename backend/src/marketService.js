@@ -112,6 +112,89 @@ async function getPrediction(symbol) {
   );
 }
 
+async function getBacktest(symbol) {
+  return withFallback(
+    `getBacktest:${symbol}`,
+    () => pythonClient.getBacktest(symbol),
+    async () => ({
+      symbol: String(symbol || "").toUpperCase(),
+      companyName: fallback.quoteForSymbol(symbol).displayName,
+      modelVersion: "fallback-simulated-v1",
+      trainedAt: new Date().toISOString(),
+      metrics: {
+        mape: 12.8,
+        directionalAccuracy: 0.63,
+        directionalHitRate: 63,
+        mae: 2.4,
+        winLossRatio: 1.4,
+        cumulativeReturnPct: 8.6,
+      },
+      evaluationWindows: 8,
+      series: [
+        { window: "W1", predictedReturnPct: 1.8, actualReturnPct: 1.2 },
+        { window: "W2", predictedReturnPct: -0.6, actualReturnPct: -1.1 },
+        { window: "W3", predictedReturnPct: 2.1, actualReturnPct: 1.6 },
+      ],
+      strategySummary: {
+        label: "Fallback backtest",
+        notes: ["Fallback mode is active because the ML service is offline."],
+      },
+      scenarioLab: {
+        investmentAmount: 100000,
+        horizonDays: 30,
+        baseCaseValue: 106800,
+        bullCaseValue: 113400,
+        bearCaseValue: 95400,
+        confidenceBand: {
+          downsidePct: -4.6,
+          basePct: 6.8,
+          upsidePct: 13.4,
+        },
+      },
+      provenance: {
+        jobId: "fallback",
+        quoteSource: "simulated",
+      },
+    }),
+  );
+}
+
+async function getModelMonitoring() {
+  return withFallback(
+    "getModelMonitoring",
+    () => pythonClient.getModelHealth(),
+    async () => ({
+      modelVersion: "fallback-simulated-v1",
+      trainedAt: new Date().toISOString(),
+      trainingUniverseSize: loadSymbolMaster().length,
+      jobId: "fallback",
+      quoteSourceHealth: {
+        liveQuoteCacheFresh: false,
+        historyCachePolicyMinutes: 180,
+        quoteCachePolicySeconds: 90,
+      },
+      metrics: {
+        averageMape: 12.1,
+        averageDirectionalAccuracy: 64.2,
+        driftScore: 0.18,
+        cachedPredictions: 0,
+      },
+      datasetStatus: [
+        { name: "NSE Equities", status: "Healthy" },
+        { name: "Yahoo Quote Feed", status: "Fallback" },
+        { name: "Feature Store", status: "Simulated" },
+      ],
+    }),
+  );
+}
+
+function signalDirectionTone(direction) {
+  const normalized = String(direction || "").toLowerCase();
+  if (normalized.includes("buy")) return "bullish";
+  if (normalized.includes("sell")) return "bearish";
+  return "neutral";
+}
+
 async function buildWatchlist(symbols) {
   const assets = await Promise.all(
     symbols.map(async (symbol) => {
@@ -247,6 +330,7 @@ async function buildAnalytics() {
     async () => {
       const snapshotSymbols = loadSymbolMaster().slice(0, 40).map((item) => item.symbol);
       const quotes = await Promise.all(snapshotSymbols.map((symbol) => getQuote(symbol)));
+      const predictions = await Promise.all(snapshotSymbols.slice(0, 12).map((symbol) => getPrediction(symbol)));
       const sectorMap = new Map();
 
       quotes.forEach((quote) => {
@@ -276,6 +360,20 @@ async function buildAnalytics() {
         ? sectors.reduce((sum, item) => sum + item.performance, 0) / sectors.length
         : 0;
       const sentimentScore = Math.max(35, Math.min(92, Math.round(55 + averagePerformance * 4)));
+      const screenerUniverse = await screenSymbols({
+        marketCapBucket: "Large Cap",
+        predictionBias: "bullish",
+        minDividendYield: 0.2,
+        limit: 6,
+      });
+      const comparisonUniverse = await compareSymbols(["INFY", "TCS", "RELIANCE"]);
+      const newsSentiment = predictions.slice(0, 4).map((item, index) => ({
+        id: `headline_${index + 1}`,
+        headline: `${item.symbol} ${item.direction.toLowerCase()} setup draws ${item.confidence >= 75 ? "constructive" : "measured"} attention`,
+        sentiment: item.confidence >= 75 ? "Positive" : item.confidence >= 65 ? "Neutral" : "Cautious",
+        score: Math.round(item.confidence),
+        source: item.source === "live" ? "Live quote + model" : "EOD + model",
+      }));
 
       return {
         title: "Market Analytics",
@@ -292,6 +390,22 @@ async function buildAnalytics() {
           title: "Shared Market Model Signal",
           description:
             "Current signals combine sector rotation, benchmark context, and daily end-of-day market structure.",
+        },
+        screener: {
+          title: "Advanced Screener",
+          summary: "Large-cap bullish candidates filtered by dividend support, volatility, and model bias.",
+          items: screenerUniverse.items,
+          filtersApplied: screenerUniverse.filtersApplied,
+        },
+        compareWorkspace: {
+          title: "Compare Workspace",
+          summary: "Benchmark blue-chip leaders across prediction confidence, valuation, and volatility posture.",
+          items: comparisonUniverse.symbols,
+        },
+        newsSentiment: {
+          title: "News + Sentiment Layer",
+          summary: "Lightweight headline sentiment generated from model direction, sector breadth, and market context.",
+          items: newsSentiment,
         },
       };
     },
@@ -334,17 +448,25 @@ async function compareSymbols(symbols) {
         peRatio: company.peRatio,
         dividendYield: company.dividendYield,
         marketCap: company.marketCap,
+        volatilityPct: Number((((quote.high - quote.low) / Math.max(quote.currentPrice, 1)) * 100).toFixed(2)),
         prediction: {
           direction: prediction.direction,
           confidence: prediction.confidence,
           source: prediction.source || prediction.availability || "model",
         },
+        recommendationSummary:
+          prediction.confidence >= 78
+            ? "High conviction candidate"
+            : prediction.confidence >= 66
+              ? "Monitor for setup confirmation"
+              : "Lower conviction, use caution",
       };
     }),
   );
   return {
     symbols: comparison,
     comparedCount: comparison.length,
+    summary: "Multi-stock benchmark spanning market structure, valuation proxies, and model conviction.",
   };
 }
 
@@ -361,7 +483,8 @@ async function screenSymbols(filters = {}) {
 
   const companies = await Promise.all(
     sourceSymbols.map(async (symbol) => {
-      const [quote, company] = await Promise.all([getQuote(symbol), getCompany(symbol)]);
+      const [quote, company, prediction] = await Promise.all([getQuote(symbol), getCompany(symbol), getPrediction(symbol)]);
+      const recentSignals = prediction.recentSignals || {};
       return {
         symbol: quote.symbol,
         displayName: quote.displayName,
@@ -372,6 +495,10 @@ async function screenSymbols(filters = {}) {
         peRatio: company.peRatio,
         pbRatio: company.pbRatio,
         dividendYield: company.dividendYield,
+        rsi14: Number(recentSignals.rsi14 || 50),
+        volatilityPct: Number((((quote.high - quote.low) / Math.max(quote.currentPrice, 1)) * 100).toFixed(2)),
+        predictionBias: signalDirectionTone(prediction.direction),
+        confidence: prediction.confidence,
       };
     }),
   );
@@ -380,12 +507,85 @@ async function screenSymbols(filters = {}) {
     .filter((item) => (filters.minPe === undefined ? true : item.peRatio >= filters.minPe))
     .filter((item) => (filters.maxPe === undefined ? true : item.peRatio <= filters.maxPe))
     .filter((item) => (filters.minDividendYield === undefined ? true : item.dividendYield >= filters.minDividendYield))
+    .filter((item) => (filters.minRsi === undefined ? true : item.rsi14 >= filters.minRsi))
+    .filter((item) => (filters.maxVolatility === undefined ? true : item.volatilityPct <= filters.maxVolatility))
+    .filter((item) => {
+      if (!filters.predictionBias || filters.predictionBias === "any") return true;
+      if (filters.predictionBias === "neutral_or_better") {
+        return item.predictionBias === "bullish" || item.predictionBias === "neutral";
+      }
+      return item.predictionBias === filters.predictionBias;
+    })
+    .sort((left, right) => right.confidence - left.confidence)
     .slice(0, limit);
 
   return {
     count: filtered.length,
     items: filtered,
-    filtersApplied: filters,
+    filtersApplied: {
+      sector: filters.sector || null,
+      marketCapBucket: filters.marketCapBucket || null,
+      minPe: filters.minPe ?? null,
+      maxPe: filters.maxPe ?? null,
+      minDividendYield: filters.minDividendYield ?? null,
+      predictionBias: filters.predictionBias || null,
+      minRsi: filters.minRsi ?? null,
+      maxVolatility: filters.maxVolatility ?? null,
+    },
+  };
+}
+
+async function buildPortfolioRecommendations(user, portfolio, watchlistSymbols) {
+  const holdings = portfolio.positions || [];
+  const sectors = (portfolio.analytics?.exposureBySector || []).sort((left, right) => right.value - left.value);
+  const topSector = sectors[0]?.sector || "Diversified";
+  const watchlistCandidates = watchlistSymbols.slice(0, 3);
+  const candidateQuotes = await Promise.all(
+    watchlistCandidates.map(async (symbol) => {
+      const prediction = await getPrediction(symbol);
+      return {
+        symbol,
+        confidence: prediction.confidence,
+        direction: prediction.direction,
+      };
+    }),
+  );
+  return {
+    title: "Portfolio Recommendation Engine",
+    modelPortfolios: [
+      {
+        profile: "Conservative",
+        allocation: "45% leaders / 35% defensives / 20% cash",
+        diversificationScore: 82,
+        riskAdjustedReturn: "11.8%",
+      },
+      {
+        profile: "Balanced",
+        allocation: "55% leaders / 25% cyclicals / 20% cash",
+        diversificationScore: 76,
+        riskAdjustedReturn: "14.6%",
+      },
+      {
+        profile: "Aggressive",
+        allocation: "70% momentum / 20% rotation / 10% cash",
+        diversificationScore: 64,
+        riskAdjustedReturn: "18.9%",
+      },
+    ],
+    rebalanceSuggestions: [
+      `Current concentration is highest in ${topSector}. Consider rotating a portion into under-owned sectors if risk budget is tight.`,
+      holdings.length < 4
+        ? "Portfolio is still concentrated. Add 2-3 uncorrelated sectors to improve diversification."
+        : "Diversification is reasonable; use alerts and screener presets to keep entries selective.",
+      candidateQuotes.length
+        ? `${candidateQuotes[0].symbol} currently shows the strongest watchlist conviction at ${candidateQuotes[0].confidence.toFixed(1)}% confidence.`
+        : "Add more watchlist candidates to generate personalized allocation ideas.",
+    ],
+    snapshot: {
+      holdingsCount: holdings.length,
+      watchlistCoverage: watchlistSymbols.length,
+      portfolioValue: user.portfolioValue,
+    },
   };
 }
 
@@ -476,11 +676,14 @@ module.exports = {
   getChart,
   getCompany,
   getPrediction,
+  getBacktest,
   buildWatchlist,
   buildDashboard,
   buildAnalytics,
   buildStockDetails,
+  buildPortfolioRecommendations,
   getMarketMovers,
+  getModelMonitoring,
   compareSymbols,
   screenSymbols,
   pythonClient,

@@ -3,7 +3,14 @@ const path = require("path");
 const crypto = require("crypto");
 const { MongoClient, ObjectId } = require("mongodb");
 const { config } = require("./config");
-const { buildDefaultNotifications, buildDefaultPortfolio, buildDefaultSettings, DEFAULT_WATCHLIST_SYMBOLS } = require("./defaults");
+const {
+  buildDefaultAlertRules,
+  buildDefaultNotifications,
+  buildDefaultPortfolio,
+  buildDefaultScreenerPresets,
+  buildDefaultSettings,
+  DEFAULT_WATCHLIST_SYMBOLS,
+} = require("./defaults");
 
 const LOCAL_DB_PATH = config.database.localFilePath || path.join(__dirname, "..", "data", "appdb.json");
 
@@ -45,6 +52,7 @@ class LocalDatabaseProvider {
       settings: [],
       notifications: [],
       alerts: [],
+      screenerPresets: [],
     };
   }
 
@@ -141,6 +149,20 @@ class LocalDatabaseProvider {
         updatedAt: nowIso(),
       });
     }
+    if (!this.state.alerts.some((item) => item.userId === userId)) {
+      this.state.alerts.push({
+        userId,
+        items: buildDefaultAlertRules(),
+        updatedAt: nowIso(),
+      });
+    }
+    if (!this.state.screenerPresets.some((item) => item.userId === userId)) {
+      this.state.screenerPresets.push({
+        userId,
+        items: buildDefaultScreenerPresets(),
+        updatedAt: nowIso(),
+      });
+    }
     this.persist();
   }
 
@@ -199,6 +221,32 @@ class LocalDatabaseProvider {
 
   async saveNotifications(userId, items) {
     const existing = await this.getNotifications(userId);
+    existing.items = clone(items);
+    existing.updatedAt = nowIso();
+    this.persist();
+    return existing;
+  }
+
+  async getAlerts(userId) {
+    await this.ensureUserScaffold(userId);
+    return this.state.alerts.find((item) => item.userId === userId) || null;
+  }
+
+  async saveAlerts(userId, items) {
+    const existing = await this.getAlerts(userId);
+    existing.items = clone(items);
+    existing.updatedAt = nowIso();
+    this.persist();
+    return existing;
+  }
+
+  async getScreenerPresets(userId) {
+    await this.ensureUserScaffold(userId);
+    return this.state.screenerPresets.find((item) => item.userId === userId) || null;
+  }
+
+  async saveScreenerPresets(userId, items) {
+    const existing = await this.getScreenerPresets(userId);
     existing.items = clone(items);
     existing.updatedAt = nowIso();
     this.persist();
@@ -309,6 +357,28 @@ class MongoDatabaseProvider {
         },
         { upsert: true },
       ),
+      this.collection("alerts").updateOne(
+        { userId },
+        {
+          $setOnInsert: {
+            userId,
+            items: buildDefaultAlertRules(),
+            updatedAt: nowIso(),
+          },
+        },
+        { upsert: true },
+      ),
+      this.collection("screenerPresets").updateOne(
+        { userId },
+        {
+          $setOnInsert: {
+            userId,
+            items: buildDefaultScreenerPresets(),
+            updatedAt: nowIso(),
+          },
+        },
+        { upsert: true },
+      ),
     ]);
   }
 
@@ -359,6 +429,26 @@ class MongoDatabaseProvider {
   async saveNotifications(userId, items) {
     await this.collection("notifications").updateOne({ userId }, { $set: { userId, items: clone(items), updatedAt: nowIso() } }, { upsert: true });
     return this.getNotifications(userId);
+  }
+
+  async getAlerts(userId) {
+    await this.ensureUserScaffold(userId);
+    return this.sanitizeId(await this.collection("alerts").findOne({ userId }));
+  }
+
+  async saveAlerts(userId, items) {
+    await this.collection("alerts").updateOne({ userId }, { $set: { userId, items: clone(items), updatedAt: nowIso() } }, { upsert: true });
+    return this.getAlerts(userId);
+  }
+
+  async getScreenerPresets(userId) {
+    await this.ensureUserScaffold(userId);
+    return this.sanitizeId(await this.collection("screenerPresets").findOne({ userId }));
+  }
+
+  async saveScreenerPresets(userId, items) {
+    await this.collection("screenerPresets").updateOne({ userId }, { $set: { userId, items: clone(items), updatedAt: nowIso() } }, { upsert: true });
+    return this.getScreenerPresets(userId);
   }
 }
 

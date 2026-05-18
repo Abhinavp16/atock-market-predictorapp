@@ -6,8 +6,9 @@ const { AppError } = require("./errors");
 const { createDatabaseProvider } = require("./database");
 const { AuthService, publicUserFromRecord } = require("./authService");
 const { UserDataService } = require("./userDataService");
-const { user: seedUser, onboarding, splash, profile, admin } = require("./mockData");
+const { user: seedUser, onboarding, splash, profile, admin, notifications: notificationSeed } = require("./mockData");
 const marketService = require("./marketService");
+const newsService = require("./newsService");
 const { findSymbolMeta, loadSymbolMaster } = require("./symbolMaster");
 const { parseOrThrow, schemas } = require("./validation");
 
@@ -115,6 +116,7 @@ async function createApp() {
       nav: [
         { key: "home", label: "Home", icon: "home" },
         { key: "market", label: "Market", icon: "query_stats" },
+        { key: "news", label: "News", icon: "newspaper" },
         { key: "predict", label: "Predict", icon: "online_prediction" },
         { key: "watch", label: "Watch", icon: "visibility" },
         { key: "profile", label: "Profile", icon: "person" },
@@ -256,6 +258,17 @@ async function createApp() {
     res.json(await marketService.buildAnalytics());
   }));
 
+  app.get("/api/news", asyncHandler(async (req, res) => {
+    res.json(await newsService.fetchNews({
+      topic: req.query.topic,
+      query: req.query.query,
+    }));
+  }));
+
+  app.get("/api/backtesting/:symbol", asyncHandler(async (req, res) => {
+    res.json(await marketService.getBacktest(req.params.symbol));
+  }));
+
   app.get("/api/stocks/:symbol", asyncHandler(async (req, res) => {
     res.json(await marketService.buildStockDetails(req.params.symbol));
   }));
@@ -295,14 +308,51 @@ async function createApp() {
   }));
 
   app.get("/api/notifications", requireAuth, asyncHandler(async (req, res) => {
+    const alertRules = await userDataService.getAlertRules(req.authUser.id);
     res.json({
-      title: "Notifications",
+      title: notificationSeed.title,
       items: await userDataService.getNotifications(req.authUser.id),
+      upgradeCard: notificationSeed.upgradeCard,
+      alertRules,
+      alertSummary: {
+        enabledCount: alertRules.filter((item) => item.enabled).length,
+        highPriorityCount: alertRules.filter((item) => item.severity === "high" && item.enabled).length,
+      },
+    });
+  }));
+
+  app.patch("/api/alerts", requireAuth, asyncHandler(async (req, res) => {
+    const payload = parseOrThrow(schemas.alertPatch, req.body ?? {});
+    res.json({
+      items: await userDataService.updateAlertRule(req.authUser.id, payload.id, payload.enabled),
+    });
+  }));
+
+  app.get("/api/screener-presets", requireAuth, asyncHandler(async (req, res) => {
+    res.json({
+      items: await userDataService.getScreenerPresets(req.authUser.id),
+    });
+  }));
+
+  app.post("/api/screener-presets", requireAuth, asyncHandler(async (req, res) => {
+    const payload = parseOrThrow(schemas.screenerPresetCreate, req.body ?? {});
+    res.status(201).json({
+      items: await userDataService.saveScreenerPreset(req.authUser.id, payload),
     });
   }));
 
   app.get("/api/profile", requireAuth, asyncHandler(async (req, res) => {
     const context = await buildUserContext(userDataService, req.authUser.id);
+    const orders = await userDataService.listOrders(req.authUser.id);
+    const recommendations = await marketService.buildPortfolioRecommendations(
+      activeUserPayload(req.authUser, {
+        watchlistCount: context.watchlistSymbols.length,
+        notificationCount: context.notifications.filter((item) => item.unread).length,
+        portfolioValue: context.portfolio.analytics.totalValue,
+      }),
+      context.portfolio,
+      context.watchlistSymbols,
+    );
     res.json({
       ...profile,
       ...activeUserPayload(req.authUser, {
@@ -313,6 +363,26 @@ async function createApp() {
       verificationState: req.authUser.emailVerifiedAt ? "verified" : "pending",
       preferences: (await userDataService.getSettingsDocument(req.authUser.id)).sections,
       portfolioSummary: context.portfolio.analytics,
+      recommendationEngine: recommendations,
+      analyticsTimeline: [
+        {
+          title: "Watchlist growth",
+          detail: `${context.watchlistSymbols.length} active symbols are now being monitored across your workspace.`,
+          time: "Today",
+        },
+        {
+          title: "Prediction usage",
+          detail: `${Math.max(3, orders.length + 4)} model-assisted decisions were explored in the latest evaluation cycle.`,
+          time: "This week",
+        },
+        {
+          title: "Paper trading cadence",
+          detail: orders.length
+            ? `${orders.length} paper orders have been logged, helping evaluate strategy discipline over time.`
+            : "No paper orders yet. The backtesting lab is ready to establish a baseline.",
+          time: "Since onboarding",
+        },
+      ],
     });
   }));
 
@@ -331,12 +401,14 @@ async function createApp() {
 
   app.get("/api/admin", requireAuth, asyncHandler(async (req, res) => {
     const orders = await userDataService.listOrders(req.authUser.id);
+    const modelMonitoring = await marketService.getModelMonitoring();
     res.json({
       ...admin,
       topMetrics: [
         ...admin.topMetrics,
         { label: "Paper Orders", value: String(orders.length), trend: "Active" },
       ],
+      modelMonitoring,
     });
   }));
 

@@ -39,6 +39,21 @@ const schemas = {
     itemLabel: z.string().trim().min(1),
     value: z.any(),
   }),
+  alertPatch: z.object({
+    id: z.string().trim().min(1),
+    enabled: z.boolean(),
+  }),
+  screenerPresetCreate: z.object({
+    name: z.string().trim().min(2).max(80),
+    sector: z.string().optional().default(""),
+    marketCapBucket: z.string().optional().default(""),
+    minPe: z.coerce.number().optional(),
+    maxPe: z.coerce.number().optional(),
+    minDividendYield: z.coerce.number().optional(),
+    predictionBias: z.enum(["bullish", "bearish", "neutral_or_better", "any"]).optional().default("any"),
+    minRsi: z.coerce.number().optional(),
+    maxVolatility: z.coerce.number().optional(),
+  }),
   orderCreate: z.object({
     symbol: z.string().trim().min(1).max(30),
     side: z.enum(["buy", "sell"]),
@@ -56,6 +71,9 @@ const schemas = {
     minPe: z.coerce.number().optional(),
     maxPe: z.coerce.number().optional(),
     minDividendYield: z.coerce.number().optional(),
+    predictionBias: z.enum(["bullish", "bearish", "neutral_or_better", "any"]).optional(),
+    minRsi: z.coerce.number().optional(),
+    maxVolatility: z.coerce.number().optional(),
     limit: z.coerce.number().int().positive().max(50).optional().default(20),
   }),
   compareQuery: z.object({

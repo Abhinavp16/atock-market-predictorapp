@@ -255,13 +255,24 @@ class AppRepository {
   Future<JsonMap> fetchSymbols(String query) =>
       _get('/symbols?query=${Uri.encodeQueryComponent(query)}');
   Future<JsonMap> fetchAnalytics() => _get('/market/analytics');
+  Future<JsonMap> fetchNews({String topic = 'all', String query = ''}) =>
+      _get(
+        '/news?topic=${Uri.encodeQueryComponent(topic)}&query=${Uri.encodeQueryComponent(query)}',
+      );
   Future<JsonMap> fetchPrediction(String symbol) =>
       _get('/predictions/${symbol.toUpperCase()}');
+  Future<JsonMap> fetchBacktesting(String symbol) =>
+      _get('/backtesting/${symbol.toUpperCase()}');
   Future<JsonMap> fetchStockDetails(String symbol) =>
       _get('/stocks/${symbol.toUpperCase()}');
   Future<JsonMap> createTrade(String symbol, String side, double amount) =>
       _post('/trade', {'symbol': symbol, 'side': side, 'amount': amount});
   Future<JsonMap> fetchNotifications() => _get('/notifications');
+  Future<JsonMap> updateAlertRule(String id, bool enabled) =>
+      _patch('/alerts', {'id': id, 'enabled': enabled});
+  Future<JsonMap> fetchScreenerPresets() => _get('/screener-presets');
+  Future<JsonMap> saveScreenerPreset(JsonMap preset) =>
+      _post('/screener-presets', preset);
   Future<JsonMap> fetchProfile() => _get('/profile');
   Future<JsonMap> fetchSettings() => _get('/settings');
   Future<JsonMap> updateSetting(

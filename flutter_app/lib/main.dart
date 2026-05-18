@@ -140,6 +140,7 @@ class LstmInsightApp extends StatelessWidget {
         '/register': (_) => RegisterScreen(repository: repository),
         '/home': (_) => HomeDashboardScreen(repository: repository),
         '/market': (_) => MarketAnalyticsScreen(repository: repository),
+        '/news': (_) => NewsScreen(repository: repository),
         '/predict': (_) =>
             PredictionScreen(repository: repository, symbol: 'INFY'),
         '/watchlist': (_) => WatchlistScreen(repository: repository),
@@ -195,7 +196,7 @@ class AppColors {
   static const page = Color(0xFFF8FAFC);
 }
 
-enum NavTab { home, market, predict, watch, profile }
+enum NavTab { home, market, news, predict, watch, profile }
 
 class AppLaunchGate extends StatelessWidget {
   const AppLaunchGate({super.key, required this.repository});
@@ -330,6 +331,7 @@ class NavItem extends StatelessWidget {
     final route = switch (tab) {
       NavTab.home => '/home',
       NavTab.market => '/market',
+      NavTab.news => '/news',
       NavTab.predict => '/predict',
       NavTab.watch => '/watchlist',
       NavTab.profile => '/profile',
@@ -337,6 +339,7 @@ class NavItem extends StatelessWidget {
     final icon = switch (tab) {
       NavTab.home => Icons.home_outlined,
       NavTab.market => Icons.query_stats,
+      NavTab.news => Icons.newspaper_outlined,
       NavTab.predict => Icons.online_prediction_outlined,
       NavTab.watch => Icons.visibility_outlined,
       NavTab.profile => Icons.person_outline,
@@ -344,6 +347,7 @@ class NavItem extends StatelessWidget {
     final label = switch (tab) {
       NavTab.home => 'Home',
       NavTab.market => 'Market',
+      NavTab.news => 'News',
       NavTab.predict => 'Predict',
       NavTab.watch => 'Watch',
       NavTab.profile => 'Profile',
@@ -2737,6 +2741,12 @@ class MarketAnalyticsScreen extends StatelessWidget {
           final sectors = asListOfMaps(data['sectors']);
           final movers = asListOfMaps(data['movers']);
           final signal = asMap(data['signal']);
+          final screener = asMap(data['screener']);
+          final screenerItems = asListOfMaps(screener['items']);
+          final compareWorkspace = asMap(data['compareWorkspace']);
+          final compareItems = asListOfMaps(compareWorkspace['items']);
+          final newsSentiment = asMap(data['newsSentiment']);
+          final newsItems = asListOfMaps(newsSentiment['items']);
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
@@ -2938,6 +2948,481 @@ class MarketAnalyticsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (screenerItems.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          screener['title']?.toString() ?? 'Advanced Screener',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(screener['summary']?.toString() ?? ''),
+                        const SizedBox(height: 14),
+                        ...screenerItems.take(4).map(
+                          (item) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(item['symbol']?.toString() ?? ''),
+                            subtitle: Text(
+                              '${item['sector']} • RSI ${number(item['rsi14']).toStringAsFixed(0)} • Vol ${number(item['volatilityPct']).toStringAsFixed(1)}%',
+                            ),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${number(item['confidence']).toStringAsFixed(0)}%',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                Text(
+                                  item['predictionBias']?.toString() ?? '',
+                                  style: Theme.of(context).textTheme.labelMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (compareItems.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          compareWorkspace['title']?.toString() ??
+                              'Compare Workspace',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(compareWorkspace['summary']?.toString() ?? ''),
+                        const SizedBox(height: 14),
+                        ...compareItems.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          item['displayName']?.toString() ?? '',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${number(asMap(item['prediction'])['confidence']).toStringAsFixed(0)}%',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${item['sector']} • P/E ${number(item['peRatio']).toStringAsFixed(1)} • Div ${number(item['dividendYield']).toStringAsFixed(1)}%',
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    item['recommendationSummary']?.toString() ??
+                                        '',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (newsItems.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          newsSentiment['title']?.toString() ??
+                              'News + Sentiment Layer',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(newsSentiment['summary']?.toString() ?? ''),
+                        const SizedBox(height: 14),
+                        ...newsItems.map(
+                          (item) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleBadge(
+                              icon: Icons.article_outlined,
+                              color: AppColors.primary,
+                            ),
+                            title: Text(item['headline']?.toString() ?? ''),
+                            subtitle: Text(item['source']?.toString() ?? ''),
+                            trailing: SignalPill(
+                              label:
+                                  '${item['sentiment']} ${item['score'] ?? ''}',
+                              tone:
+                                  item['sentiment'] == 'Positive'
+                                  ? SignalTone.positive
+                                  : item['sentiment'] == 'Cautious'
+                                  ? SignalTone.negative
+                                  : SignalTone.neutral,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class NewsScreen extends StatefulWidget {
+  const NewsScreen({super.key, required this.repository});
+
+  final AppRepository repository;
+
+  @override
+  State<NewsScreen> createState() => _NewsScreenState();
+}
+
+class _NewsScreenState extends State<NewsScreen> {
+  late Future<JsonMap> _future;
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedTopic = 'all';
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.repository.fetchNews(topic: _selectedTopic, query: _query);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = widget.repository.fetchNews(
+        topic: _selectedTopic,
+        query: _query,
+      );
+    });
+  }
+
+  void _submitSearch() {
+    _query = _searchController.text.trim();
+    _reload();
+  }
+
+  void _showStory(JsonMap item) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLowest,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item['title']?.toString() ?? '',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SignalPill(
+                        label: item['source']?.toString() ?? 'Publisher',
+                        tone: SignalTone.neutral,
+                      ),
+                      SignalPill(
+                        label: item['sentiment']?.toString() ?? 'Neutral',
+                        tone: item['sentiment'] == 'Positive'
+                            ? SignalTone.positive
+                            : item['sentiment'] == 'Negative'
+                            ? SignalTone.negative
+                            : SignalTone.neutral,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    item['summary']?.toString().isNotEmpty == true
+                        ? item['summary']?.toString() ?? ''
+                        : 'This headline was pulled from the live market-news feed. Open the source link for the full publisher story.',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      height: 1.55,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Published: ${formatNewsTime(item['publishedAt']?.toString() ?? '')}',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  if ((item['link']?.toString() ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SelectableText(
+                      item['link']?.toString() ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScreenScaffold(
+      activeTab: NavTab.news,
+      actions: [
+        IconButton(
+          onPressed: _reload,
+          icon: const Icon(
+            Icons.refresh_rounded,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+      ],
+      child: AsyncPage(
+        future: _future,
+        builder: (context, data) {
+          final topics = asListOfMaps(data['topics']);
+          final items = asListOfMaps(data['items']);
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data['title']?.toString() ?? 'Market News',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  data['subtitle']?.toString() ??
+                      'Live stock-market headlines for your workspace.',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 16),
+                SurfaceCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: (_) => _submitSearch(),
+                        decoration: InputDecoration(
+                          hintText: 'Search a stock, sector, or market theme',
+                          suffixIcon: IconButton(
+                            onPressed: _submitSearch,
+                            icon: const Icon(Icons.search_rounded),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: topics.map((item) {
+                            final key = item['key']?.toString() ?? 'all';
+                            final active = key == _selectedTopic;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(item['label']?.toString() ?? ''),
+                                selected: active,
+                                onSelected: (_) {
+                                  setState(() {
+                                    _selectedTopic = key;
+                                    _future = widget.repository.fetchNews(
+                                      topic: _selectedTopic,
+                                      query: _query,
+                                    );
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Updated ${formatNewsTime(data['updatedAt']?.toString() ?? '')}',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...items.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => _showStory(item),
+                      child: SurfaceCard(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          SignalPill(
+                                            label:
+                                                item['source']?.toString() ??
+                                                'Publisher',
+                                            tone: SignalTone.neutral,
+                                          ),
+                                          SignalPill(
+                                            label:
+                                                item['sentiment']?.toString() ??
+                                                'Neutral',
+                                            tone:
+                                                item['sentiment'] == 'Positive'
+                                                ? SignalTone.positive
+                                                : item['sentiment'] ==
+                                                      'Negative'
+                                                ? SignalTone.negative
+                                                : SignalTone.neutral,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        item['title']?.toString() ?? '',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        item['summary']?.toString() ?? '',
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        formatNewsTime(
+                                          item['publishedAt']?.toString() ?? '',
+                                        ),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelMedium,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.trending_up_rounded,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -2975,6 +3460,11 @@ class PredictionScreen extends StatelessWidget {
         builder: (context, data) {
           final factors = asListOfMaps(data['factors']);
           final series = asListOfMaps(data['sevenDayForecast']);
+          final factorBreakdown = asListOfMaps(data['factorBreakdown']);
+          final confidenceDrivers = asListOfMaps(data['confidenceDrivers']);
+          final recentSignals = asMap(data['recentSignals']);
+          final sectorStrength = asMap(data['sectorStrength']);
+          final quoteProvenance = asMap(data['quoteProvenance']);
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
@@ -3066,6 +3556,92 @@ class PredictionScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                        'Why this prediction?',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(data['explanation']?['summary']?.toString() ?? ''),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: confidenceDrivers
+                            .map(
+                              (item) => SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: item['label']?.toString() ?? '',
+                                  value: item['value']?.toString() ?? '',
+                                  tone:
+                                      item['tone']?.toString() == 'negative'
+                                      ? AppColors.error
+                                      : AppColors.primary,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      ...factorBreakdown.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item['title']?.toString() ?? '',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                    Text(
+                                      number(item['value']).toStringAsFixed(2),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color:
+                                                number(item['value']) >= 0
+                                                ? AppColors.secondary
+                                                : AppColors.error,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(item['note']?.toString() ?? ''),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SurfaceCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         '$appBrandName Synthesis',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
@@ -3121,6 +3697,228 @@ class PredictionScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                SurfaceCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Market context snapshot',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: (MediaQuery.sizeOf(context).width - 54) / 2,
+                            child: MetricMiniCard(
+                              title: 'RSI (14)',
+                              value:
+                                  number(recentSignals['rsi14']).toStringAsFixed(
+                                    1,
+                                  ),
+                              tone: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(
+                            width: (MediaQuery.sizeOf(context).width - 54) / 2,
+                            child: MetricMiniCard(
+                              title: '30D Momentum',
+                              value:
+                                  '${number(recentSignals['momentum30d']).toStringAsFixed(1)}%',
+                              tone: AppColors.secondary,
+                            ),
+                          ),
+                          SizedBox(
+                            width: (MediaQuery.sizeOf(context).width - 54) / 2,
+                            child: MetricMiniCard(
+                              title: 'Sector strength',
+                              value:
+                                  '${sectorStrength['label']?.toString() ?? ''} ${number(sectorStrength['score']).toStringAsFixed(1)}',
+                              tone: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(
+                            width: (MediaQuery.sizeOf(context).width - 54) / 2,
+                            child: MetricMiniCard(
+                              title: 'Quote source',
+                              value:
+                                  quoteProvenance['quoteSource']
+                                      ?.toString()
+                                      .toUpperCase() ??
+                                  '',
+                              subtitle:
+                                  quoteProvenance['marketState']?.toString(),
+                              tone: AppColors.secondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FutureBuilder<JsonMap>(
+                  future: repository.fetchBacktesting(symbol),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SurfaceCard(
+                        padding: EdgeInsets.all(20),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final backtest = snapshot.data!;
+                    final metrics = asMap(backtest['metrics']);
+                    final backtestSeries = asListOfMaps(backtest['series']);
+                    final strategySummary = asMap(backtest['strategySummary']);
+                    final scenarioLab = asMap(backtest['scenarioLab']);
+                    final confidenceBand = asMap(scenarioLab['confidenceBand']);
+                    return SurfaceCard(
+                      padding: const EdgeInsets.all(20),
+                      accent: AppColors.primary,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Backtesting Lab',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(strategySummary['label']?.toString() ?? ''),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'Hit Rate',
+                                  value:
+                                      '${number(metrics['directionalHitRate']).toStringAsFixed(1)}%',
+                                  tone: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'MAPE',
+                                  value:
+                                      '${number(metrics['mape']).toStringAsFixed(1)}%',
+                                  tone: AppColors.secondary,
+                                ),
+                              ),
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'Win/Loss',
+                                  value:
+                                      number(
+                                        metrics['winLossRatio'],
+                                      ).toStringAsFixed(2),
+                                  tone: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'Cumulative',
+                                  value:
+                                      '${number(metrics['cumulativeReturnPct']).toStringAsFixed(1)}%',
+                                  tone: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ...backtestSeries.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item['window']?.toString() ?? '',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Pred ${signedPercent(number(item['predictedReturnPct']), digits: 1)}',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Act ${signedPercent(number(item['actualReturnPct']), digits: 1)}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.copyWith(
+                                      color:
+                                          number(item['actualReturnPct']) >= 0
+                                          ? AppColors.secondary
+                                          : AppColors.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Scenario simulator',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'Base case',
+                                  value: money(
+                                    number(scenarioLab['baseCaseValue']),
+                                    compact: false,
+                                  ),
+                                  subtitle:
+                                      '${number(confidenceBand['basePct']).toStringAsFixed(1)}%',
+                                  tone: AppColors.primary,
+                                ),
+                              ),
+                              SizedBox(
+                                width:
+                                    (MediaQuery.sizeOf(context).width - 54) / 2,
+                                child: MetricMiniCard(
+                                  title: 'Downside',
+                                  value: money(
+                                    number(scenarioLab['bearCaseValue']),
+                                    compact: false,
+                                  ),
+                                  subtitle:
+                                      '${number(confidenceBand['downsidePct']).toStringAsFixed(1)}%',
+                                  tone: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -3618,10 +4416,37 @@ class _StockDetailsScreenState extends State<StockDetailsScreen> {
   }
 }
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, required this.repository});
 
   final AppRepository repository;
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late Future<JsonMap> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.repository.fetchNotifications();
+  }
+
+  Future<void> _toggleAlert(String id, bool enabled) async {
+    final response = await widget.repository.updateAlertRule(id, enabled);
+    final current = await widget.repository.fetchNotifications();
+    if (!mounted) return;
+    setState(() {
+      _future = Future.value({...current, 'alertRules': response['items']});
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(enabled ? 'Alert rule enabled.' : 'Alert rule paused.'),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3637,10 +4462,12 @@ class NotificationsScreen extends StatelessWidget {
         ),
       ],
       child: AsyncPage(
-        future: repository.fetchNotifications(),
+        future: _future,
         builder: (context, data) {
           final items = asListOfMaps(data['items']);
           final upgradeCard = asMap(data['upgradeCard']);
+          final alertRules = asListOfMaps(data['alertRules']);
+          final alertSummary = asMap(data['alertSummary']);
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
@@ -3719,6 +4546,49 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (alertRules.isNotEmpty)
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Personalized Alert System',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            SignalPill(
+                              label:
+                                  '${alertSummary['enabledCount'] ?? 0} enabled',
+                              tone: SignalTone.primary,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${alertSummary['highPriorityCount'] ?? 0} high-priority rules are actively guarding your portfolio and watchlist.',
+                        ),
+                        const SizedBox(height: 12),
+                        ...alertRules.map(
+                          (item) => SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            value: item['enabled'] == true,
+                            onChanged: (value) =>
+                                _toggleAlert(item['id']?.toString() ?? '', value),
+                            title: Text(item['title']?.toString() ?? ''),
+                            subtitle: Text(
+                              '${item['scope']} • ${item['description']}',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(22),
@@ -3786,6 +4656,14 @@ class ProfileScreen extends StatelessWidget {
           final security = asListOfStrings(data['security']);
           final preferences = asListOfMaps(data['preferences']);
           final portfolioSummary = asMap(data['portfolioSummary']);
+          final recommendationEngine = asMap(data['recommendationEngine']);
+          final modelPortfolios = asListOfMaps(
+            recommendationEngine['modelPortfolios'],
+          );
+          final rebalanceSuggestions = asListOfStrings(
+            recommendationEngine['rebalanceSuggestions'],
+          );
+          final analyticsTimeline = asListOfMaps(data['analyticsTimeline']);
           final sectorExposure = asListOfMaps(
             portfolioSummary['exposureBySector'],
           );
@@ -4013,6 +4891,102 @@ class ProfileScreen extends StatelessWidget {
                       .toList(),
                 ),
                 const SizedBox(height: 18),
+                if (modelPortfolios.isNotEmpty)
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(18),
+                    accent: AppColors.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recommendationEngine['title']?.toString() ??
+                              'Portfolio Recommendation Engine',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: modelPortfolios
+                              .map(
+                                (item) => SizedBox(
+                                  width: compactProfile
+                                      ? profileGridWidth
+                                      : profileGridWidth,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['profile']?.toString() ?? '',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          item['allocation']?.toString() ?? '',
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          'Diversification ${item['diversificationScore']}',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelMedium,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Risk-adjusted ${item['riskAdjustedReturn']}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: AppColors.primary,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        if (rebalanceSuggestions.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          ...rebalanceSuggestions.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: CircleBadge(
+                                      icon: Icons.auto_graph_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(item)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 18),
                 SurfaceCard(
                   padding: const EdgeInsets.all(18),
                   child: Column(
@@ -4133,6 +5107,38 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (analyticsTimeline.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'User Analytics Timeline',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 12),
+                        ...analyticsTimeline.map(
+                          (item) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleBadge(
+                              icon: Icons.insights_outlined,
+                              color: AppColors.primary,
+                            ),
+                            title: Text(item['title']?.toString() ?? ''),
+                            subtitle: Text(item['detail']?.toString() ?? ''),
+                            trailing: Text(
+                              item['time']?.toString() ?? '',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 SurfaceCard(
                   padding: const EdgeInsets.all(18),
@@ -4794,6 +5800,11 @@ class AdminPanelScreen extends StatelessWidget {
           final modelMetrics = asListOfMaps(data['modelMetrics']);
           final datasetStatus = asListOfMaps(data['datasetStatus']);
           final events = asListOfMaps(data['systemEvents']);
+          final modelMonitoring = asMap(data['modelMonitoring']);
+          final modelMonitoringMetrics = asMap(modelMonitoring['metrics']);
+          final monitoringDatasets = asListOfMaps(
+            modelMonitoring['datasetStatus'],
+          );
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
@@ -4851,6 +5862,90 @@ class AdminPanelScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (modelMonitoring.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(20),
+                    accent: AppColors.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Model Monitoring Dashboard',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            SizedBox(
+                              width:
+                                  (MediaQuery.sizeOf(context).width - 44) / 2,
+                              child: MetricMiniCard(
+                                title: 'Avg MAPE',
+                                value:
+                                    '${number(modelMonitoringMetrics['averageMape']).toStringAsFixed(1)}%',
+                                tone: AppColors.primary,
+                              ),
+                            ),
+                            SizedBox(
+                              width:
+                                  (MediaQuery.sizeOf(context).width - 44) / 2,
+                              child: MetricMiniCard(
+                                title: 'Dir Accuracy',
+                                value:
+                                    '${number(modelMonitoringMetrics['averageDirectionalAccuracy']).toStringAsFixed(1)}%',
+                                tone: AppColors.secondary,
+                              ),
+                            ),
+                            SizedBox(
+                              width:
+                                  (MediaQuery.sizeOf(context).width - 44) / 2,
+                              child: MetricMiniCard(
+                                title: 'Drift Score',
+                                value:
+                                    number(
+                                      modelMonitoringMetrics['driftScore'],
+                                    ).toStringAsFixed(3),
+                                tone: AppColors.primary,
+                              ),
+                            ),
+                            SizedBox(
+                              width:
+                                  (MediaQuery.sizeOf(context).width - 44) / 2,
+                              child: MetricMiniCard(
+                                title: 'Universe',
+                                value:
+                                    modelMonitoring['trainingUniverseSize']
+                                        ?.toString() ??
+                                    '',
+                                tone: AppColors.secondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Version ${modelMonitoring['modelVersion'] ?? ''} • Job ${modelMonitoring['jobId'] ?? ''}',
+                        ),
+                        if (monitoringDatasets.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          ...monitoringDatasets.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InfoRow(
+                                label: item['name']?.toString() ?? '',
+                                value: item['status']?.toString() ?? '',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 SurfaceCard(
                   padding: const EdgeInsets.all(20),
@@ -6152,6 +7247,23 @@ String money(double value, {int decimals = 2, bool compact = true}) {
 String signedPercent(double value, {int digits = 2}) {
   final prefix = value > 0 ? '+' : '';
   return '$prefix${value.toStringAsFixed(digits)}%';
+}
+
+String formatNewsTime(String raw) {
+  if (raw.isEmpty) return 'Latest';
+  final direct = DateTime.tryParse(raw);
+  if (direct != null) {
+    return DateFormat('dd MMM • hh:mm a').format(direct.toLocal());
+  }
+  try {
+    final parsed = DateFormat(
+      'EEE, dd MMM yyyy HH:mm:ss Z',
+      'en_US',
+    ).parseUtc(raw);
+    return DateFormat('dd MMM • hh:mm a').format(parsed.toLocal());
+  } catch (_) {
+    return raw;
+  }
 }
 
 SignalTone signalToneFromText(String? value) {

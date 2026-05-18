@@ -1,4 +1,9 @@
-const { settings: defaultSettings, notifications: defaultNotifications } = require("./mockData");
+const {
+  settings: defaultSettings,
+  notifications: defaultNotifications,
+  alertRules: defaultAlertRules,
+  screenerPresets: defaultScreenerPresets,
+} = require("./mockData");
 
 const DEFAULT_WATCHLIST_SYMBOLS = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "SBIN"];
 
@@ -31,9 +36,19 @@ function buildDefaultPortfolio() {
   };
 }
 
+function buildDefaultAlertRules() {
+  return clone(defaultAlertRules);
+}
+
+function buildDefaultScreenerPresets() {
+  return clone(defaultScreenerPresets);
+}
+
 module.exports = {
   DEFAULT_WATCHLIST_SYMBOLS,
+  buildDefaultAlertRules,
   buildDefaultNotifications,
   buildDefaultPortfolio,
+  buildDefaultScreenerPresets,
   buildDefaultSettings,
 };

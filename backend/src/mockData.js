@@ -107,6 +107,76 @@ const notifications = {
   },
 };
 
+const alertRules = [
+  {
+    id: "alert_1",
+    title: "Prediction flips",
+    description: "Notify when a tracked symbol shifts between bullish and bearish model regimes.",
+    type: "prediction_flip",
+    scope: "Watchlist",
+    enabled: true,
+    lastTriggered: "Today",
+    severity: "high",
+  },
+  {
+    id: "alert_2",
+    title: "Breakout / breakdown",
+    description: "Surface price action that clears the recent 20-session range with confirmation volume.",
+    type: "breakout",
+    scope: "High conviction names",
+    enabled: true,
+    lastTriggered: "2h ago",
+    severity: "medium",
+  },
+  {
+    id: "alert_3",
+    title: "Volume shockers",
+    description: "Detect unusual turnover versus the trailing 20-day average for tracked sectors.",
+    type: "volume_spike",
+    scope: "Sector leaders",
+    enabled: true,
+    lastTriggered: "Yesterday",
+    severity: "medium",
+  },
+  {
+    id: "alert_4",
+    title: "Portfolio drawdown guard",
+    description: "Warn when paper portfolio drawdown exceeds the configured tolerance band.",
+    type: "portfolio_drawdown",
+    scope: "Portfolio",
+    enabled: false,
+    lastTriggered: "Never",
+    severity: "high",
+  },
+];
+
+const screenerPresets = [
+  {
+    id: "preset_1",
+    name: "Large Cap Momentum",
+    sector: "",
+    marketCapBucket: "Large Cap",
+    minPe: 12,
+    maxPe: 40,
+    minDividendYield: 0.2,
+    predictionBias: "bullish",
+    minRsi: 52,
+    maxVolatility: 4.2,
+  },
+  {
+    id: "preset_2",
+    name: "Dividend Compounders",
+    sector: "",
+    marketCapBucket: "Large / Mid Cap",
+    minPe: 8,
+    maxPe: 26,
+    minDividendYield: 1.2,
+    predictionBias: "neutral_or_better",
+    minRsi: 45,
+    maxVolatility: 3.4,
+  },
+];
+
 const profile = {
   ...user,
   bio: "Independent market participant focused on Indian large-cap leadership, sector rotation, and AI-assisted decision support.",
@@ -200,6 +270,8 @@ const admin = {
 const appState = {
   settings,
   watchlistSymbols: ["RELIANCE", "TCS", "INFY", "HDFCBANK", "SBIN"],
+  alertRules,
+  screenerPresets,
 };
 
 module.exports = {
@@ -208,8 +280,10 @@ module.exports = {
   onboarding,
   splash,
   notifications,
+  alertRules,
   profile,
   settings,
+  screenerPresets,
   admin,
   appState,
 };

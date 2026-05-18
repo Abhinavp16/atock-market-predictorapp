@@ -53,6 +53,39 @@ class UserDataService {
     return clone(doc.items);
   }
 
+  async getAlertRules(userId) {
+    const doc = await this.database.getAlerts(userId);
+    return clone(doc.items);
+  }
+
+  async updateAlertRule(userId, alertId, enabled) {
+    const items = await this.getAlertRules(userId);
+    const target = items.find((item) => item.id === alertId);
+    if (!target) {
+      throw new AppError(404, "Alert rule not found.");
+    }
+    target.enabled = enabled;
+    target.updatedAt = new Date().toISOString();
+    await this.database.saveAlerts(userId, items);
+    return items;
+  }
+
+  async getScreenerPresets(userId) {
+    const doc = await this.database.getScreenerPresets(userId);
+    return clone(doc.items);
+  }
+
+  async saveScreenerPreset(userId, preset) {
+    const items = await this.getScreenerPresets(userId);
+    items.unshift({
+      id: `preset_${Date.now()}`,
+      ...preset,
+      createdAt: new Date().toISOString(),
+    });
+    await this.database.saveScreenerPresets(userId, items.slice(0, 10));
+    return items.slice(0, 10);
+  }
+
   async getPortfolio(userId) {
     const portfolio = await this.database.getPortfolio(userId);
     return portfolio || buildDefaultPortfolio();

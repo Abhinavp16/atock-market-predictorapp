@@ -59,6 +59,14 @@ class PythonMarketClient {
     return requestJson(`/predict/${String(symbol).toUpperCase()}`);
   }
 
+  async getBacktest(symbol) {
+    return requestJson(`/backtest/${String(symbol).toUpperCase()}`);
+  }
+
+  async getModelHealth() {
+    return requestJson("/model-health");
+  }
+
   async train(symbols) {
     return requestJson("/train", { method: "POST", body: { symbols } });
   }
