@@ -6,14 +6,23 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "echo \"No automated backend tests configured\""
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.17.0",
+    "nanoid": "^5.1.5",
+    "pino": "^9.7.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1"
   }
 }
