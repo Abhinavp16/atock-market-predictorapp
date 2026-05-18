@@ -1,19 +1,27 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+
+import 'core/app_repository.dart';
+import 'core/providers.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 const appBrandName = 'NiveshIQ';
+const appLogoAssetPath = 'assets/images/logo.png';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
-  runApp(LstmInsightApp(repository: AppRepository()));
+  final repository = AppRepository();
+  await repository.restoreSession();
+  runApp(
+    ProviderScope(
+      overrides: [appRepositoryProvider.overrideWithValue(repository)],
+      child: LstmInsightApp(repository: repository),
+    ),
+  );
 }
 
 class LstmInsightApp extends StatelessWidget {
@@ -23,44 +31,45 @@ class LstmInsightApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = GoogleFonts.hankenGroteskTextTheme().copyWith(
-      displayLarge: GoogleFonts.hankenGrotesk(
+    final baseTextTheme = ThemeData(brightness: Brightness.light).textTheme;
+    final textTheme = baseTextTheme.copyWith(
+      displayLarge: baseTextTheme.displayLarge?.copyWith(
         fontSize: 48,
         height: 56 / 48,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.96,
         color: AppColors.onSurface,
       ),
-      headlineLarge: GoogleFonts.hankenGrotesk(
+      headlineLarge: baseTextTheme.headlineLarge?.copyWith(
         fontSize: 32,
         height: 40 / 32,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.32,
         color: AppColors.onSurface,
       ),
-      headlineMedium: GoogleFonts.hankenGrotesk(
+      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
         fontSize: 24,
         height: 32 / 24,
         fontWeight: FontWeight.w600,
         color: AppColors.onSurface,
       ),
-      titleLarge: GoogleFonts.hankenGrotesk(
+      titleLarge: baseTextTheme.titleLarge?.copyWith(
         fontSize: 20,
         height: 28 / 20,
         fontWeight: FontWeight.w500,
         color: AppColors.onSurface,
       ),
-      bodyLarge: GoogleFonts.hankenGrotesk(
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(
         fontSize: 16,
         height: 24 / 16,
         color: AppColors.onSurfaceVariant,
       ),
-      bodyMedium: GoogleFonts.hankenGrotesk(
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
         fontSize: 14,
         height: 20 / 14,
         color: AppColors.onSurfaceVariant,
       ),
-      labelMedium: GoogleFonts.hankenGrotesk(
+      labelMedium: baseTextTheme.labelMedium?.copyWith(
         fontSize: 12,
         height: 16 / 12,
         fontWeight: FontWeight.w600,
@@ -176,113 +185,6 @@ class AppColors {
 }
 
 enum NavTab { home, market, predict, watch, profile }
-
-String resolveApiBaseUrl() {
-  const override = String.fromEnvironment('API_BASE_URL');
-  if (override.isNotEmpty) {
-    return override;
-  }
-  if (kIsWeb) {
-    return 'http://localhost:3000/api';
-  }
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.android:
-      return 'http://10.0.2.2:3000/api';
-    default:
-      return 'http://localhost:3000/api';
-  }
-}
-
-class AppRepository {
-  AppRepository({http.Client? client, String? baseUrl})
-    : _client = client ?? http.Client(),
-      _baseUrl = baseUrl ?? resolveApiBaseUrl();
-
-  final http.Client _client;
-  final String _baseUrl;
-
-  Future<JsonMap> _get(String path) async {
-    final response = await _client
-        .get(Uri.parse('$_baseUrl$path'))
-        .timeout(const Duration(seconds: 10));
-    return _decodeMap(response);
-  }
-
-  Future<JsonMap> _post(String path, JsonMap body) async {
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl$path'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-    return _decodeMap(response);
-  }
-
-  Future<JsonMap> _patch(String path, JsonMap body) async {
-    final response = await _client
-        .patch(
-          Uri.parse('$_baseUrl$path'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 10));
-    return _decodeMap(response);
-  }
-
-  JsonMap _decodeMap(http.Response response) {
-    final dynamic decoded = response.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(response.body);
-    if (response.statusCode >= 400) {
-      final message = decoded is Map<String, dynamic>
-          ? decoded['message']
-          : 'Request failed.';
-      throw Exception(message);
-    }
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
-    throw Exception('Unexpected response payload.');
-  }
-
-  Future<JsonMap> fetchBootstrap() => _get('/bootstrap');
-  Future<JsonMap> fetchHealth() => _get('/health');
-  Future<JsonMap> login(String email, String password) =>
-      _post('/auth/login', {'email': email, 'password': password});
-  Future<JsonMap> register(String fullName, String email, String password) =>
-      _post('/auth/register', {
-        'fullName': fullName,
-        'email': email,
-        'password': password,
-      });
-  Future<JsonMap> fetchDashboard() => _get('/dashboard');
-  Future<JsonMap> fetchWatchlist() => _get('/watchlist');
-  Future<JsonMap> addWatchlistAsset(String symbol, String name, double price) =>
-      _post('/watchlist', {'symbol': symbol, 'name': name, 'price': price});
-  Future<JsonMap> fetchSymbols(String query) =>
-      _get('/symbols?query=${Uri.encodeQueryComponent(query)}');
-  Future<JsonMap> fetchAnalytics() => _get('/market/analytics');
-  Future<JsonMap> fetchPrediction(String symbol) =>
-      _get('/predictions/${symbol.toUpperCase()}');
-  Future<JsonMap> fetchStockDetails(String symbol) =>
-      _get('/stocks/${symbol.toUpperCase()}');
-  Future<JsonMap> createTrade(String symbol, String side, double amount) =>
-      _post('/trade', {'symbol': symbol, 'side': side, 'amount': amount});
-  Future<JsonMap> fetchNotifications() => _get('/notifications');
-  Future<JsonMap> fetchProfile() => _get('/profile');
-  Future<JsonMap> fetchSettings() => _get('/settings');
-  Future<JsonMap> updateSetting(
-    String sectionTitle,
-    String itemLabel,
-    dynamic value,
-  ) => _patch('/settings', {
-    'sectionTitle': sectionTitle,
-    'itemLabel': itemLabel,
-    'value': value,
-  });
-  Future<JsonMap> fetchAdmin() => _get('/admin');
-}
 
 class ScreenScaffold extends StatelessWidget {
   const ScreenScaffold({
@@ -534,6 +436,9 @@ class SplashScreen extends StatelessWidget {
         builder: (context, data) {
           final splash = asMap(data['splash']);
           final stats = asListOfMaps(splash['stats']);
+          final callToAction = repository.isAuthenticated
+              ? 'Continue as ${repository.currentUser?['firstName']?.toString() ?? 'Investor'}'
+              : 'Get Started';
           return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 28),
@@ -634,8 +539,12 @@ class SplashScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () =>
-                                Navigator.pushNamed(context, '/onboarding'),
+                            onPressed: () => Navigator.pushNamed(
+                              context,
+                              repository.isAuthenticated
+                                  ? '/home'
+                                  : '/onboarding',
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
@@ -645,7 +554,7 @@ class SplashScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: const Text('Get Started'),
+                            child: Text(callToAction),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -988,8 +897,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _fullName = TextEditingController(text: 'John Doe');
-  final _email = TextEditingController(text: 'name@company.com');
+  final _fullName = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController(text: 'password!');
   bool _loading = false;
   String? _message;
@@ -1017,7 +926,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _message = response['message']?.toString());
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } catch (error) {
-      setState(() => _message = '$error');
+      setState(
+        () => _message = error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -1298,7 +1209,30 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _message = response['message']?.toString());
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } catch (error) {
-      setState(() => _message = '$error');
+      setState(
+        () => _message = error.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  Future<void> _socialLogin(String provider) async {
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+    try {
+      final response = await widget.repository.socialLogin(provider);
+      if (!mounted) return;
+      setState(() => _message = response['message']?.toString());
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    } catch (error) {
+      setState(
+        () => _message = error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -1418,18 +1352,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 20),
                         Row(
-                          children: const [
+                          children: [
                             Expanded(
                               child: SocialButton(
                                 icon: Icons.g_mobiledata_rounded,
                                 label: 'Google',
+                                onPressed: _loading
+                                    ? null
+                                    : () => _socialLogin('google'),
                               ),
                             ),
-                            SizedBox(width: 12),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: SocialButton(
                                 icon: Icons.apple,
                                 label: 'Apple',
+                                onPressed: _loading
+                                    ? null
+                                    : () => _socialLogin('apple'),
                               ),
                             ),
                           ],
@@ -1462,18 +1402,41 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
-  late Future<JsonMap> _future;
+  JsonMap? _dashboard;
+  String? _error;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.repository.fetchDashboard();
+    _loadDashboard();
+  }
+
+  Future<void> _loadDashboard({bool keepExisting = false}) async {
+    setState(() {
+      _error = null;
+      if (!keepExisting || _dashboard == null) {
+        _loading = true;
+      }
+    });
+    try {
+      final data = await widget.repository.fetchDashboard();
+      if (!mounted) return;
+      setState(() {
+        _dashboard = data;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _refreshDashboard() async {
-    final future = widget.repository.fetchDashboard();
-    setState(() => _future = future);
-    await future;
+    await _loadDashboard(keepExisting: true);
   }
 
   @override
@@ -1489,282 +1452,668 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
         ),
       ],
-      child: AsyncPage(
-        future: _future,
-        builder: (context, data) {
-          final liveCards = asListOfMaps(data['liveCards']);
-          final highReturn = asMap(data['highReturn']);
-          final highReturnItems = asListOfMaps(highReturn['items']);
-          final trending = asListOfMaps(data['trendingInsights']);
-          final watchlist = asListOfMaps(data['watchlistPreview']);
-          final aiPrediction = asMap(data['aiPrediction']);
-          final featured = asMap(data['featuredAnalysis']);
-          final highReturnSourceLabel =
-              highReturn['sourceLabel']?.toString() ?? '';
-          final highReturnBadgeColor = highReturnSourceLabel == 'Live'
-              ? AppColors.success
-              : highReturnSourceLabel == 'Mostly Live'
-              ? AppColors.secondary
-              : highReturnSourceLabel == 'Market Closed'
-              ? AppColors.tertiaryContainer
-              : AppColors.onSurfaceVariant;
-          return RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _refreshDashboard,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-              child: Column(
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _refreshDashboard,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Builder(
+            builder: (context) {
+              if (_loading && _dashboard == null) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Loading your market dashboard',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Fetching the latest Indian market data and model signals.',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 22),
+                    const SurfaceCard(
+                      padding: EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.6,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              'Dashboard is loading. Pull down to retry if it takes too long.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              if (_dashboard == null) {
+                return SurfaceCard(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.wifi_tethering_error_rounded,
+                        color: AppColors.error,
+                        size: 40,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Unable to load the home dashboard',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _error ?? 'Unknown error',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _loadDashboard(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final data = _dashboard!;
+              final liveCards = asListOfMaps(data['liveCards']);
+              final highReturn = asMap(data['highReturn']);
+              final highReturnItems = asListOfMaps(highReturn['items']);
+              final trending = asListOfMaps(data['trendingInsights']);
+              final watchlist = asListOfMaps(data['watchlistPreview']);
+              final aiPrediction = asMap(data['aiPrediction']);
+              final featured = asMap(data['featuredAnalysis']);
+              final highReturnSourceLabel =
+                  highReturn['sourceLabel']?.toString() ?? '';
+              final highReturnBadgeColor = highReturnSourceLabel == 'Live'
+                  ? AppColors.success
+                  : highReturnSourceLabel == 'Mostly Live'
+                  ? AppColors.secondary
+                  : highReturnSourceLabel == 'Market Closed'
+                  ? AppColors.tertiaryContainer
+                  : AppColors.onSurfaceVariant;
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Text(
-                  data['greeting']?.toString() ?? '',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  data['subtitle']?.toString() ?? '',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 18),
-                SearchField(
-                  placeholder:
-                      data['searchPlaceholder']?.toString() ?? 'Search',
-                  readOnly: true,
-                  onTap: () async {
-                    final selected = await showSymbolSearchSheet(
-                      context,
-                      widget.repository,
-                    );
-                    if (!context.mounted || selected == null) {
-                      return;
-                    }
-                    final symbol = selected['symbol']?.toString();
-                    if (symbol == null || symbol.isEmpty) {
-                      return;
-                    }
-                    Navigator.pushNamed(context, '/stock', arguments: symbol);
-                  },
-                ),
-                const SizedBox(height: 18),
-                ...liveCards.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        '/stock',
-                        arguments: item['symbol']?.toString(),
+                  if (_error != null) ...[
+                    SurfaceCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.tertiaryContainer,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Showing the latest loaded dashboard. Pull down to retry the refresh.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: SurfaceCard(
-                        padding: const EdgeInsets.all(18),
-                        accent: item['accent']?.toString() == 'error'
-                            ? AppColors.error
-                            : AppColors.secondaryContainer,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item['symbol']?.toString() ?? '',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelMedium,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item['name']?.toString() ?? '',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                      ),
-                                    ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  Text(
+                    data['greeting']?.toString() ?? '',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    data['subtitle']?.toString() ?? '',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 18),
+                  SearchField(
+                    placeholder:
+                        data['searchPlaceholder']?.toString() ?? 'Search',
+                    readOnly: true,
+                    onTap: () async {
+                      final selected = await showSymbolSearchSheet(
+                        context,
+                        widget.repository,
+                      );
+                      if (!context.mounted || selected == null) {
+                        return;
+                      }
+                      final symbol = selected['symbol']?.toString();
+                      if (symbol == null || symbol.isEmpty) {
+                        return;
+                      }
+                      Navigator.pushNamed(context, '/stock', arguments: symbol);
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  ...liveCards.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/stock',
+                          arguments: item['symbol']?.toString(),
+                        ),
+                        child: SurfaceCard(
+                          padding: const EdgeInsets.all(18),
+                          accent: item['accent']?.toString() == 'error'
+                              ? AppColors.error
+                              : AppColors.secondaryContainer,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['symbol']?.toString() ?? '',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelMedium,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item['name']?.toString() ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Icon(
-                                  number(item['changePct']) >= 0
-                                      ? Icons.trending_up_rounded
-                                      : Icons.trending_down_rounded,
+                                  Icon(
+                                    number(item['changePct']) >= 0
+                                        ? Icons.trending_up_rounded
+                                        : Icons.trending_down_rounded,
+                                    color: number(item['changePct']) >= 0
+                                        ? AppColors.secondary
+                                        : AppColors.error,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Text(
+                                    money(number(item['price'])),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    signedPercent(number(item['changePct'])),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: number(item['changePct']) >= 0
+                                              ? AppColors.secondary
+                                              : AppColors.error,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 56,
+                                child: SparklineChart(
+                                  values: numbers(item['sparkline']),
                                   color: number(item['changePct']) >= 0
                                       ? AppColors.secondary
                                       : AppColors.error,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Text(
-                                  money(number(item['price'])),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  signedPercent(number(item['changePct'])),
-                                  style: Theme.of(context).textTheme.labelMedium
-                                      ?.copyWith(
-                                        color: number(item['changePct']) >= 0
-                                            ? AppColors.secondary
-                                            : AppColors.error,
-                                      ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 56,
-                              child: SparklineChart(
-                                values: numbers(item['sparkline']),
-                                color: number(item['changePct']) >= 0
-                                    ? AppColors.secondary
-                                    : AppColors.error,
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(18),
+                    accent: AppColors.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            SignalPill(
+                              label:
+                                  aiPrediction['badge']?.toString() ??
+                                  'AI PREDICTION',
+                              tone: SignalTone.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              aiPrediction['symbol']?.toString() ?? '',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          aiPrediction['title']?.toString() ?? '',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(aiPrediction['description']?.toString() ?? ''),
+                        const SizedBox(height: 18),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Confidence',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium
+                                          ?.copyWith(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 20),
+                                const Icon(
+                                  Icons.online_prediction_outlined,
+                                  color: AppColors.primary,
+                                  size: 28,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (highReturnItems.isNotEmpty) ...[
+                    const SizedBox(height: 26),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            highReturn['title']?.toString() ?? 'High Return',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (highReturnSourceLabel.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: highReturnSourceLabel == 'Live'
+                                  ? AppColors.success.withValues(alpha: 0.12)
+                                  : highReturnBadgeColor.withValues(
+                                      alpha: 0.08,
+                                    ),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: highReturnBadgeColor.withValues(
+                                  alpha: 0.24,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              highReturnSourceLabel,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: highReturnBadgeColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      highReturn['subtitle']?.toString() ??
+                          'Top-return ideas ranked from the latest tracked Indian market snapshot',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    SurfaceCard(
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 4,
+                                  child: Text(
+                                    'Company',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 3,
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      'Market price',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ...highReturnItems.asMap().entries.map((entry) {
+                            final item = entry.value;
+                            final changePct = number(item['changePct']);
+                            final priceChange = number(item['priceChange']);
+                            final toneColor = changePct >= 0
+                                ? AppColors.success
+                                : AppColors.error;
+                            final changeLabel =
+                                '${priceChange >= 0 ? '+' : '-'}${money(priceChange.abs(), decimals: 2, compact: false)} (${changePct.abs().toStringAsFixed(2)}%)';
+                            final priceLabel = money(
+                              number(item['price']),
+                              decimals: 2,
+                              compact: false,
+                            );
+
+                            return InkWell(
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                '/stock',
+                                arguments: item['symbol']?.toString(),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 18,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    top: entry.key == 0
+                                        ? BorderSide.none
+                                        : const BorderSide(
+                                            color: AppColors.outlineSoft,
+                                          ),
+                                  ),
+                                ),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final compact = constraints.maxWidth < 360;
+                                    final sparklineWidth = compact
+                                        ? 72.0
+                                        : 92.0;
+                                    final rightColumnWidth = compact
+                                        ? 124.0
+                                        : 148.0;
+                                    return Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item['name']?.toString() ??
+                                                    item['symbol']
+                                                        ?.toString() ??
+                                                    '',
+                                                maxLines: compact ? 3 : 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      height: 1.18,
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                item['symbol']?.toString() ??
+                                                    '',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelMedium
+                                                    ?.copyWith(
+                                                      color: AppColors
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: compact ? 10 : 14),
+                                        SizedBox(
+                                          width: sparklineWidth,
+                                          height: 42,
+                                          child: Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: Align(
+                                                  alignment: Alignment.center,
+                                                  child: Container(
+                                                    height: 1,
+                                                    color:
+                                                        AppColors.outlineSoft,
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned.fill(
+                                                child: SparklineChart(
+                                                  values: numbers(
+                                                    item['sparkline'],
+                                                  ),
+                                                  color: toneColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: compact ? 10 : 14),
+                                        SizedBox(
+                                          width: rightColumnWidth,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Text(
+                                                  priceLabel,
+                                                  textAlign: TextAlign.right,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Text(
+                                                  changeLabel,
+                                                  textAlign: TextAlign.right,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelMedium
+                                                      ?.copyWith(
+                                                        color: toneColor,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 26),
+                  Row(
+                    children: [
+                      Text(
+                        'Trending Insights',
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('View All'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...trending.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SurfaceCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            CircleBadge(
+                              icon: iconFromName(item['icon']?.toString()),
+                              color: accentColor(item['color']?.toString()),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['title']?.toString() ?? '',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w500),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(item['description']?.toString() ?? ''),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              item['age']?.toString() ?? '',
+                              style: Theme.of(context).textTheme.labelMedium,
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                ),
-                SurfaceCard(
-                  padding: const EdgeInsets.all(18),
-                  accent: AppColors.primary,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SignalPill(
-                            label:
-                                aiPrediction['badge']?.toString() ??
-                                'AI PREDICTION',
-                            tone: SignalTone.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            aiPrediction['symbol']?.toString() ?? '',
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: AppColors.primary),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        aiPrediction['title']?.toString() ?? '',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(aiPrediction['description']?.toString() ?? ''),
-                      const SizedBox(height: 18),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Confidence',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelMedium,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 20),
-                              const Icon(
-                                Icons.online_prediction_outlined,
-                                color: AppColors.primary,
-                                size: 28,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                  if (highReturnItems.isNotEmpty) ...[
-                  const SizedBox(height: 26),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          highReturn['title']?.toString() ?? 'High Return',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      if (highReturnSourceLabel.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: highReturnSourceLabel == 'Live'
-                                ? AppColors.success.withValues(alpha: 0.12)
-                                : highReturnBadgeColor.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: highReturnBadgeColor.withValues(
-                                alpha: 0.24,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            highReturnSourceLabel,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  color: highReturnBadgeColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 12),
                   Text(
-                    highReturn['subtitle']?.toString() ??
-                        'Top-return ideas ranked from the latest tracked Indian market snapshot',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    'Watchlist',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SurfaceCard(
@@ -1774,7 +2123,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 14,
+                            vertical: 12,
                           ),
                           decoration: const BoxDecoration(
                             color: AppColors.surface,
@@ -1785,417 +2134,160 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           child: Row(
                             children: [
                               Expanded(
-                                flex: 4,
                                 child: Text(
-                                  'Company',
-                                  style: Theme.of(context).textTheme.labelMedium
-                                      ?.copyWith(
-                                        color: AppColors.onSurfaceVariant,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 3,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    'Market price',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelMedium?.copyWith(
-                                      color: AppColors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ...highReturnItems.asMap().entries.map((entry) {
-                          final item = entry.value;
-                          final changePct = number(item['changePct']);
-                          final priceChange = number(item['priceChange']);
-                          final toneColor = changePct >= 0
-                              ? AppColors.success
-                              : AppColors.error;
-                          final changeLabel =
-                              '${priceChange >= 0 ? '+' : '-'}${money(priceChange.abs(), decimals: 2, compact: false)} (${changePct.abs().toStringAsFixed(2)}%)';
-                          final priceLabel = money(
-                            number(item['price']),
-                            decimals: 2,
-                            compact: false,
-                          );
-
-                          return InkWell(
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              '/stock',
-                              arguments: item['symbol']?.toString(),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 18,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: entry.key == 0
-                                      ? BorderSide.none
-                                      : const BorderSide(
-                                          color: AppColors.outlineSoft,
-                                        ),
-                                ),
-                              ),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final compact = constraints.maxWidth < 360;
-                                  final sparklineWidth = compact ? 72.0 : 92.0;
-                                  final rightColumnWidth = compact ? 124.0 : 148.0;
-                                  return Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item['name']?.toString() ??
-                                                  item['symbol']?.toString() ??
-                                                  '',
-                                              maxLines: compact ? 3 : 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleLarge
-                                                  ?.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.w600,
-                                                    height: 1.18,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              item['symbol']?.toString() ?? '',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .labelMedium
-                                                  ?.copyWith(
-                                                    color: AppColors
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: compact ? 10 : 14),
-                                      SizedBox(
-                                        width: sparklineWidth,
-                                        height: 42,
-                                        child: Stack(
-                                          children: [
-                                            Positioned.fill(
-                                              child: Align(
-                                                alignment: Alignment.center,
-                                                child: Container(
-                                                  height: 1,
-                                                  color: AppColors.outlineSoft,
-                                                ),
-                                              ),
-                                            ),
-                                            Positioned.fill(
-                                              child: SparklineChart(
-                                                values: numbers(
-                                                  item['sparkline'],
-                                                ),
-                                                color: toneColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: compact ? 10 : 14),
-                                      SizedBox(
-                                        width: rightColumnWidth,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              alignment:
-                                                  Alignment.centerRight,
-                                              child: Text(
-                                                priceLabel,
-                                                textAlign: TextAlign.right,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleLarge
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              alignment:
-                                                  Alignment.centerRight,
-                                              child: Text(
-                                                changeLabel,
-                                                textAlign: TextAlign.right,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .labelMedium
-                                                    ?.copyWith(
-                                                      color: toneColor,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 26),
-                Row(
-                  children: [
-                    Text(
-                      'Trending Insights',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const Spacer(),
-                    TextButton(onPressed: () {}, child: const Text('View All')),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ...trending.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SurfaceCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          CircleBadge(
-                            icon: iconFromName(item['icon']?.toString()),
-                            color: accentColor(item['color']?.toString()),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item['title']?.toString() ?? '',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(item['description']?.toString() ?? ''),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            item['age']?.toString() ?? '',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Watchlist',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SurfaceCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(16),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Asset',
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Price',
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  'Trend',
+                                  'Asset',
                                   style: Theme.of(
                                     context,
                                   ).textTheme.labelMedium,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ...watchlist.map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item['symbol']?.toString() ?? '',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: AppColors.onSurface,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                    Text(item['name']?.toString() ?? ''),
-                                  ],
-                                ),
-                              ),
                               Expanded(
                                 child: Text(
-                                  money(
-                                    number(item['price']),
-                                    decimals: 2,
-                                    compact: false,
-                                  ),
+                                  'Price',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium,
                                 ),
                               ),
                               Expanded(
                                 child: Align(
                                   alignment: Alignment.centerRight,
                                   child: Text(
-                                    signedPercent(
-                                      number(item['changePct']),
-                                      digits: 1,
-                                    ),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          color: number(item['changePct']) > 0
-                                              ? AppColors.secondary
-                                              : number(item['changePct']) < 0
-                                              ? AppColors.error
-                                              : AppColors.onSurfaceVariant,
-                                        ),
+                                    'Trend',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelMedium,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: TextButton(
-                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/watchlist',
-                            (_) => false,
-                          ),
-                          child: const Text('Edit Watchlist'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 26),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0C1724), Color(0xFF1E2B3B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x22000000),
-                        blurRadius: 16,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SignalPill(
-                        label: featured['label']?.toString() ?? 'DEEP DIVE',
-                        tone: SignalTone.primary,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        featured['title']?.toString() ?? '',
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              height: 1.1,
+                        ...watchlist.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
                             ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        featured['description']?.toString() ?? '',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
-                      ),
-                    ],
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['symbol']?.toString() ?? '',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: AppColors.onSurface,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      Text(item['name']?.toString() ?? ''),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    money(
+                                      number(item['price']),
+                                      decimals: 2,
+                                      compact: false,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      signedPercent(
+                                        number(item['changePct']),
+                                        digits: 1,
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(
+                                            color: number(item['changePct']) > 0
+                                                ? AppColors.secondary
+                                                : number(item['changePct']) < 0
+                                                ? AppColors.error
+                                                : AppColors.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: TextButton(
+                            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/watchlist',
+                              (_) => false,
+                            ),
+                            child: const Text('Edit Watchlist'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 26),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0C1724), Color(0xFF1E2B3B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SignalPill(
+                          label: featured['label']?.toString() ?? 'DEEP DIVE',
+                          tone: SignalTone.primary,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          featured['title']?.toString() ?? '',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          featured['description']?.toString() ?? '',
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
-            ),
-          );
-        },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -2223,9 +2315,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     final selected = await showSymbolSearchSheet(
       context,
       widget.repository,
-      title: addToWatchlist
-          ? 'Add Indian Equity'
-          : 'Browse Indian Equities',
+      title: addToWatchlist ? 'Add Indian Equity' : 'Browse Indian Equities',
     );
     if (!mounted || selected == null) {
       return;
@@ -4100,11 +4190,10 @@ class SurfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(18);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceLowest.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.outlineSoft),
+        borderRadius: borderRadius,
         boxShadow: const [
           BoxShadow(
             color: Color(0x0D000000),
@@ -4113,24 +4202,34 @@ class SurfaceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (accent != null)
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(18),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLowest,
+            borderRadius: borderRadius,
+            border: Border.all(color: AppColors.outlineSoft),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (accent != null)
+                  Container(
+                    width: 4,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(18),
+                      ),
+                    ),
                   ),
+                Expanded(
+                  child: Padding(padding: padding, child: child),
                 ),
-              ),
-            Expanded(
-              child: Padding(padding: padding, child: child),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -4176,20 +4275,11 @@ class BrandLockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BrandMark(size: logoSize, color: color),
-        const SizedBox(width: 10),
-        Text(
-          appBrandName,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: color,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
+    return Image.asset(
+      appLogoAssetPath,
+      height: fontSize * 1.7,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
     );
   }
 }
@@ -4202,71 +4292,14 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.square(size),
-      painter: BrandMarkPainter(color),
+    return Image.asset(
+      appLogoAssetPath,
+      width: size * 1.6,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
     );
   }
-}
-
-class BrandMarkPainter extends CustomPainter {
-  BrandMarkPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fill = Paint()..color = color;
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.1
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final leftBar = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        size.width * 0.1,
-        size.height * 0.18,
-        size.width * 0.16,
-        size.height * 0.62,
-      ),
-      Radius.circular(size.width * 0.08),
-    );
-    final middleBar = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        size.width * 0.42,
-        size.height * 0.26,
-        size.width * 0.16,
-        size.height * 0.54,
-      ),
-      Radius.circular(size.width * 0.08),
-    );
-    final rightBar = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        size.width * 0.74,
-        size.height * 0.1,
-        size.width * 0.16,
-        size.height * 0.7,
-      ),
-      Radius.circular(size.width * 0.08),
-    );
-
-    canvas.drawRRect(leftBar, fill);
-    canvas.drawRRect(middleBar, fill);
-    canvas.drawRRect(rightBar, fill);
-
-    final path = Path()
-      ..moveTo(size.width * 0.18, size.height * 0.72)
-      ..lineTo(size.width * 0.5, size.height * 0.34)
-      ..lineTo(size.width * 0.82, size.height * 0.22)
-      ..lineTo(size.width * 0.9, size.height * 0.08);
-    canvas.drawPath(path, stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant BrandMarkPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
 
 Future<JsonMap?> showSymbolSearchSheet(
@@ -4441,10 +4474,10 @@ class _SymbolSearchSheetState extends State<SymbolSearchSheet> {
                                 radius: 24,
                                 backgroundColor: AppColors.surfaceHigh,
                                 child: Text(
-                                  symbol.isNotEmpty ? symbol.substring(0, 1) : '?',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
+                                  symbol.isNotEmpty
+                                      ? symbol.substring(0, 1)
+                                      : '?',
+                                  style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w700,
@@ -4458,9 +4491,9 @@ class _SymbolSearchSheetState extends State<SymbolSearchSheet> {
                                   children: [
                                     Text(
                                       symbol,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelMedium,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -4475,9 +4508,9 @@ class _SymbolSearchSheetState extends State<SymbolSearchSheet> {
                                     const SizedBox(height: 4),
                                     Text(
                                       '${item['sector']} • ${item['marketCapBucket']}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
                                     ),
                                   ],
                                 ),
@@ -4539,15 +4572,21 @@ class FeatureTile extends StatelessWidget {
 }
 
 class SocialButton extends StatelessWidget {
-  const SocialButton({super.key, required this.icon, required this.label});
+  const SocialButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed,
       icon: Icon(icon, size: 20),
       label: Text(label),
       style: OutlinedButton.styleFrom(
