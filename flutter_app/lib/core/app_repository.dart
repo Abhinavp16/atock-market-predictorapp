@@ -43,17 +43,21 @@ class AppRepository {
 
   static const _sessionTokenKey = 'niveshiq_auth_token';
   static const _sessionUserKey = 'niveshiq_auth_user';
+  static const _hasSeenSplashKey = 'niveshiq_has_seen_splash';
   final http.Client _client;
   final List<String> _baseUrls;
   String _activeBaseUrl;
   String? _authToken;
   JsonMap? _sessionUser;
+  bool _hasSeenSplash = false;
 
   bool get isAuthenticated => (_authToken ?? '').isNotEmpty;
   JsonMap? get currentUser => _sessionUser;
+  bool get hasSeenSplash => _hasSeenSplash;
 
   Future<void> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
+    _hasSeenSplash = prefs.getBool(_hasSeenSplashKey) ?? false;
     final savedToken = prefs.getString(_sessionTokenKey);
     final savedUser = prefs.getString(_sessionUserKey);
     if (savedToken == null || savedToken.isEmpty) {
@@ -88,6 +92,12 @@ class AppRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionTokenKey);
     await prefs.remove(_sessionUserKey);
+  }
+
+  Future<void> markSplashSeen() async {
+    _hasSeenSplash = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hasSeenSplashKey, true);
   }
 
   Future<void> _persistSession() async {

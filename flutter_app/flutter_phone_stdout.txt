@@ -1,0 +1,80 @@
+Launching lib\main.dart on SM M315F in debug mode...
+Running Gradle task 'assembleDebug'...                          
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set DEFAULT_JVM_OPTS= 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set DIRNAME=C:\Users\hp\Desktop\pradeep\flutter_app\android\ 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "C:\Users\hp\Desktop\pradeep\flutter_app\android\" == "" set DIRNAME=. 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set APP_BASE_NAME=gradlew 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set APP_HOME=C:\Users\hp\Desktop\pradeep\flutter_app\android\ 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set JAVA_EXE=C:\Program Files\Android\Android Studio\jbr/bin/java.exe 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if exist "C:\Program Files\Android\Android Studio\jbr/bin/java.exe" goto init 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "@eval[2+2]" == "4" goto 4NT_args 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set CMD_LINE_ARGS= 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set _SKIP=2 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "x-q" == "x" goto execute 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set CMD_LINE_ARGS=-q -Ptarget-platform=android-arm64 -Ptarget=C:\Users\hp\Desktop\pradeep\flutter_app\lib\main.dart -Pbase-application-name=android.app.Application -Pdart-defines=QVBJX0JBU0VfVVJMPWh0dHA6Ly8xMjcuMC4wLjE6MzAwMC9hcGk=,RkxVVFRFUl9WRVJTSU9OPTMuMzguOQ==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NjczMjNkZTI4NQ==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NTg3YzE4Zjg3Mw==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMC44 -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false -Pfilesystem-scheme=org-dartlang-root assembleDebug 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>goto execute 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>set CLASSPATH=C:\Users\hp\Desktop\pradeep\flutter_app\android\\gradle\wrapper\gradle-wrapper.jar 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>"C:\Program Files\Android\Android Studio\jbr/bin/java.exe"    "-Dorg.gradle.appname=gradlew" -classpath "C:\Users\hp\Desktop\pradeep\flutter_app\android\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain -q -Ptarget-platform=android-arm64 -Ptarget=C:\Users\hp\Desktop\pradeep\flutter_app\lib\main.dart -Pbase-application-name=android.app.Application -Pdart-defines=QVBJX0JBU0VfVVJMPWh0dHA6Ly8xMjcuMC4wLjE6MzAwMC9hcGk=,RkxVVFRFUl9WRVJTSU9OPTMuMzguOQ==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NjczMjNkZTI4NQ==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NTg3YzE4Zjg3Mw==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMC44 -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false -Pfilesystem-scheme=org-dartlang-root assembleDebug 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "0" == "0" goto mainEnd 
+
+C:\Users\hp\Desktop\pradeep\flutter_app\android>if "Windows_NT" == "Windows_NT" endlocal
+Running Gradle task 'assembleDebug'...                             51.0s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...          71.3s
+D/FlutterJNI(11713): Beginning load of flutter...
+D/FlutterJNI(11713): flutter (null) was loaded normally!
+I/flutter (11713): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+Syncing files to device SM M315F...                                124ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on SM M315F is available at: http://127.0.0.1:61466/UpU6e8MOkBE=/
+The Flutter DevTools debugger and profiler on SM M315F is available at: http://127.0.0.1:61466/UpU6e8MOkBE=/devtools/?uri=ws://127.0.0.1:61466/UpU6e8MOkBE=/ws
+W/ple.flutter_ap(11713): Suspending all threads took: 9.821ms
+I/ViewRootImpl@2e3cc65[MainActivity](11713): stopped(true) old=false
+I/MSHandlerLifeCycle(11713): isMultiSplitHandlerRequested: windowingMode=1 isFullscreen=true isPopOver=false isHidden=false skipActivityType=false isHandlerType=false this: DecorView@bdca3cf[MainActivity]
+I/MSHandlerLifeCycle(11713): removeMultiSplitHandler: no exist. decor=DecorView@bdca3cf[MainActivity]
+I/Choreographer(11713): Skipped 1157 frames!  The application may be doing too much work on its main thread.
+W/ple.flutter_ap(11713): Verification of boolean androidx.window.layout.adapter.sidecar.SidecarCompat.validateExtensionInterface() took 117.717ms (4383.39 bytecodes/s) (0B arena alloc)
+I/ViewRootImpl@2e3cc65[MainActivity](11713): Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) req=(0,0)8 dur=9 res=0x1 s={false 0} ch=false fn=-1
+I/ViewRootImpl@2e3cc65[MainActivity](11713): [DP] cancelDraw null isViewVisible: false
+I/Choreographer(11713): Skipped 33 frames!  The application may be doing too much work on its main thread.
+I/ViewRootImpl@2e3cc65[MainActivity](11713): [DP] cancelDraw null isViewVisible: false
+I/ple.flutter_ap(11713): Compiler allocated 4364KB to compile void android.view.ViewRootImpl.performTraversals()
+I/DecorView(11713): notifyKeepScreenOnChanged: keepScreenOn=false
+I/MSHandlerLifeCycle(11713): isMultiSplitHandlerRequested: windowingMode=1 isFullscreen=true isPopOver=false isHidden=false skipActivityType=false isHandlerType=false this: DecorView@bdca3cf[MainActivity]
+I/ViewRootImpl@2e3cc65[MainActivity](11713): Relayout returned: old=(0,0,1080,2340) new=(0,0,1080,2340) req=(0,0)8 dur=11 res=0x1 s={false 0} ch=false fn=-1
+I/ViewRootImpl@2e3cc65[MainActivity](11713): [DP] cancelDraw null isViewVisible: false
+I/ViewRootImpl@2e3cc65[MainActivity](11713): [DP] cancelDraw null isViewVisible: false
+D/ProfileInstaller(11713): Installing profile for com.example.flutter_app
+Lost connection to device.

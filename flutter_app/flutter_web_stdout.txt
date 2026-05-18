@@ -1,0 +1,260 @@
+This application is not configured to build on the web.
+To add web support to a project, run `flutter create .`.
+Launching lib\main.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...             49.3s
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+This app is linked to the debug service: ws://127.0.0.1:50327/rMVO8RTUFss=/ws
+Debug service listening on ws://127.0.0.1:50327/rMVO8RTUFss=/ws
+A Dart VM Service on Chrome is available at: http://127.0.0.1:50327/rMVO8RTUFss=
+The Flutter DevTools debugger and profiler on Chrome is available at: http://127.0.0.1:50327/rMVO8RTUFss=/devtools/?uri=ws://127.0.0.1:50327/rMVO8RTUFss=/ws
+Starting application from main method in: org-dartlang-app:/web_entrypoint.dart.
+══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during performLayout():
+LayoutBuilder does not support returning intrinsic dimensions.
+Calculating the intrinsic dimensions would require running the layout callback speculatively, which
+might mutate the live render object tree.
+
+The relevant error-causing widget was:
+  IntrinsicHeight
+  IntrinsicHeight:file:///C:/Users/hp/Desktop/pradeep/flutter_app/lib/main.dart:4267:18
+
+When the exception was thrown, this was the stack:
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/errors.dart 274:3       throw_
+package:flutter/src/widgets/layout_builder.dart 478:9                             <fn>
+package:flutter/src/widgets/layout_builder.dart 484:14                            [_debugThrowIfNotCheckingIntrinsics]
+package:flutter/src/widgets/layout_builder.dart 417:12                            computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/shifted_box.dart 201:14                             computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 91:19                                computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 91:19                                computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 91:19                                computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 91:19                                computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 91:19                                computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/flex.dart 802:59                                    <fn>
+package:flutter/src/rendering/flex.dart 730:39                                    [_getIntrinsicSize]
+package:flutter/src/rendering/flex.dart 799:12                                    computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/shifted_box.dart 201:14                             computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/flex.dart 802:59                                    <fn>
+package:flutter/src/rendering/flex.dart 756:46                                    layoutChild
+package:flutter/src/rendering/flex.dart 1203:26                                   [_computeSizes]
+package:flutter/src/rendering/flex.dart 766:9                                     [_getIntrinsicSize]
+package:flutter/src/rendering/flex.dart 799:12                                    computeMaxIntrinsicHeight
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/box.dart 1117:51                                    <fn>
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 209:23         [_putIfAbsentKeyMap]
+dart-sdk/lib/_internal/js_dev_runtime/private/linked_hash_map.dart 235:14         putIfAbsent
+package:flutter/src/rendering/box.dart 1116:26                                    memoize
+package:flutter/src/rendering/box.dart 1620:31                                    [_computeWithTimeline]
+package:flutter/src/rendering/box.dart 1598:26                                    [_computeIntrinsics]
+package:flutter/src/rendering/box.dart 1956:12                                    getMaxIntrinsicHeight
+package:flutter/src/rendering/proxy_box.dart 816:44                               [_childConstraints]
+package:flutter/src/rendering/proxy_box.dart 823:30                               [_computeSize]
+package:flutter/src/rendering/proxy_box.dart 840:12                               performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/proxy_box.dart 1481:11                              performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/shifted_box.dart 243:5                              performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/flex.dart 1161:28                                   [_computeSizes]
+package:flutter/src/rendering/flex.dart 1257:32                                   performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/shifted_box.dart 243:5                              performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/widgets/single_child_scroll_view.dart 502:7                   performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/custom_paint.dart 574:11                            performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/proxy_box.dart 115:10                               <fn>
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/stack.dart 645:43                                   [_computeSize]
+package:flutter/src/rendering/stack.dart 680:12                                   performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/layout_helper.dart 62:10                            layoutChild
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/rendering/flex.dart 1203:26                                   [_computeSizes]
+package:flutter/src/rendering/flex.dart 1257:32                                   performLayout
+package:flutter/src/rendering/object.dart 2775:7                                  layout
+package:flutter/src/rendering/custom_layout.dart 180:10                           layoutChild
+package:flutter/src/material/scaffold.dart 1112:7                                 performLayout
+package:flutter/src/rendering/custom_layout.dart 249:7                            [_callPerformLayout]
+package:flutter/src/rendering/custom_layout.dart 420:5                            performLayout
+package:flutter/src/rendering/object.dart 2623:7                                  [_layoutWithoutResize]
+package:flutter/src/rendering/object.dart 1170:17                                 flushLayout
+package:flutter/src/rendering/object.dart 1183:14                                 flushLayout
+package:flutter/src/rendering/binding.dart 629:5                                  drawFrame
+package:flutter/src/widgets/binding.dart 1264:13                                  drawFrame
+package:flutter/src/rendering/binding.dart 495:5                                  [_handlePersistentFrameCallback]
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+package:flutter/src/scheduler/binding.dart 1434:7                                 [_invokeFrameCallback]
+package:flutter/src/scheduler/binding.dart 1347:9                                 handleDrawFrame
+package:flutter/src/scheduler/binding.dart 1200:5                                 [_handleDrawFrame]
+dart-sdk/lib/_internal/js_dev_runtime/private/ddc_runtime/operations.dart 118:77  tear
+lib/_engine/engine/platform_dispatcher.dart 1538:5                                invoke
+lib/_engine/engine/platform_dispatcher.dart 265:5                                 invokeOnDrawFrame
+lib/_engine/engine/frame_service.dart 209:32                                      [_renderFrame]
+lib/_engine/engine/frame_service.dart 117:9                                       <fn>
+dart-sdk/lib/async/zone.dart 1849:54                                              runUnary
+dart-sdk/lib/async/zone.dart 1804:26                                              <fn>
+dart-sdk/lib/_internal/js_dev_runtime/patch/js_allow_interop_patch.dart 224:27    _callDartFunctionFast1
+
+The following RenderObject was being processed when the exception was fired: RenderIntrinsicHeight#eaa61 relayoutBoundary=up23 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE:
+  creator: IntrinsicHeight ← DecoratedBox ← ClipRRect ← Padding ← DecoratedBox ← Container ←
+    SurfaceCard ← Column ← Builder ← Padding ← _SingleChildViewport ← IgnorePointer-[GlobalKey#db3c5]
+    ← ⋯
+  parentData: <none> (can use size)
+  constraints: BoxConstraints(0.0<=w<=1004.0, 0.0<=h<=Infinity)
+  size: MISSING
+This RenderObject had the following descendants (showing up to depth 5):
+    child: RenderFlex#14254 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+      child 1: RenderPadding#87a26 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+        child: RenderFlex#0ca3e NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 1: RenderDecoratedBox#0f911 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderPadding#a80d2 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 2: RenderSemanticsAnnotations#541fa NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#24d86 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 3: RenderSemanticsAnnotations#f06de NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#aa14e NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 4: RenderSemanticsAnnotations#44cbf NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#8ad90 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 5: RenderSemanticsAnnotations#1b072 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#8128f NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 6: RenderSemanticsAnnotations#43fb2 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#c83b5 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 7: RenderSemanticsAnnotations#d84dd NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#26179 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 8: RenderSemanticsAnnotations#8a61b NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#c0b96 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+          child 9: RenderSemanticsAnnotations#dc482 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+            child: RenderMouseRegion#d0de9 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Assertion failed: file:///C:/flutter/packages/flutter/lib/src/rendering/box.dart:2251:12
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Application finished.

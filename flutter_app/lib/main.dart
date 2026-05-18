@@ -10,7 +10,7 @@ import 'core/providers.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 const appBrandName = 'NiveshIQ';
-const appLogoAssetPath = 'assets/images/logo.png';
+const appLogoAssetPath = 'assets/images/logo_light.png';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +81,18 @@ class LstmInsightApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: appBrandName,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler.clamp(
+              minScaleFactor: 0.95,
+              maxScaleFactor: 1.08,
+            ),
+          ),
+          child: child!,
+        );
+      },
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
@@ -122,9 +134,8 @@ class LstmInsightApp extends StatelessWidget {
           ),
         ),
       ),
+      home: AppLaunchGate(repository: repository),
       routes: {
-        '/': (_) => SplashScreen(repository: repository),
-        '/onboarding': (_) => OnboardingScreen(repository: repository),
         '/login': (_) => LoginScreen(repository: repository),
         '/register': (_) => RegisterScreen(repository: repository),
         '/home': (_) => HomeDashboardScreen(repository: repository),
@@ -185,6 +196,23 @@ class AppColors {
 }
 
 enum NavTab { home, market, predict, watch, profile }
+
+class AppLaunchGate extends StatelessWidget {
+  const AppLaunchGate({super.key, required this.repository});
+
+  final AppRepository repository;
+
+  @override
+  Widget build(BuildContext context) {
+    if (repository.isAuthenticated) {
+      return HomeDashboardScreen(repository: repository);
+    }
+    if (repository.hasSeenSplash) {
+      return LoginScreen(repository: repository);
+    }
+    return SplashScreen(repository: repository);
+  }
+}
 
 class ScreenScaffold extends StatelessWidget {
   const ScreenScaffold({
@@ -436,9 +464,6 @@ class SplashScreen extends StatelessWidget {
         builder: (context, data) {
           final splash = asMap(data['splash']);
           final stats = asListOfMaps(splash['stats']);
-          final callToAction = repository.isAuthenticated
-              ? 'Continue as ${repository.currentUser?['firstName']?.toString() ?? 'Investor'}'
-              : 'Get Started';
           return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 28),
@@ -539,12 +564,15 @@ class SplashScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pushNamed(
-                              context,
-                              repository.isAuthenticated
-                                  ? '/home'
-                                  : '/onboarding',
-                            ),
+                            onPressed: () async {
+                              await repository.markSplashSeen();
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                '/login',
+                                (_) => false,
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
@@ -554,26 +582,7 @@ class SplashScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: Text(callToAction),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () =>
-                                Navigator.pushNamed(context, '/home'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.onSurface,
-                              side: const BorderSide(
-                                color: AppColors.outlineVariant,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: const Text('View Live Market'),
+                            child: const Text('Get Started'),
                           ),
                         ),
                       ],
@@ -1405,11 +1414,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   JsonMap? _dashboard;
   String? _error;
   bool _loading = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDashboard({bool keepExisting = false}) async {
@@ -1425,6 +1441,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       setState(() {
         _dashboard = data;
         _loading = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
       });
     } catch (error) {
       if (!mounted) return;
@@ -1456,6 +1477,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         color: AppColors.primary,
         onRefresh: _refreshDashboard,
         child: SingleChildScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           child: Builder(
@@ -1560,6 +1582,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   : highReturnSourceLabel == 'Market Closed'
                   ? AppColors.tertiaryContainer
                   : AppColors.onSurfaceVariant;
+              final compactHome = MediaQuery.sizeOf(context).width < 390;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1586,14 +1609,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ],
                   Text(
                     data['greeting']?.toString() ?? '',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: (compactHome
+                            ? Theme.of(context).textTheme.headlineMedium
+                            : Theme.of(context).textTheme.headlineLarge)
+                        ?.copyWith(fontWeight: FontWeight.w600, height: 1.1),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     data['subtitle']?.toString() ?? '',
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(height: 1.45),
                   ),
                   const SizedBox(height: 18),
                   SearchField(
@@ -1712,96 +1738,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       ),
                     ),
                   ),
-                  SurfaceCard(
-                    padding: const EdgeInsets.all(18),
-                    accent: AppColors.primary,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            SignalPill(
-                              label:
-                                  aiPrediction['badge']?.toString() ??
-                                  'AI PREDICTION',
-                              tone: SignalTone.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              aiPrediction['symbol']?.toString() ?? '',
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(color: AppColors.primary),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          aiPrediction['title']?.toString() ?? '',
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(aiPrediction['description']?.toString() ?? ''),
-                        const SizedBox(height: 18),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Confidence',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelMedium,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium
-                                          ?.copyWith(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 20),
-                                const Icon(
-                                  Icons.online_prediction_outlined,
-                                  color: AppColors.primary,
-                                  size: 28,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   if (highReturnItems.isNotEmpty) ...[
                     const SizedBox(height: 26),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(
-                          child: Text(
-                            highReturn['title']?.toString() ?? 'High Return',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
+                        Text(
+                          highReturn['title']?.toString() ?? 'High Return',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         if (highReturnSourceLabel.isNotEmpty)
                           Container(
@@ -1837,7 +1784,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     Text(
                       highReturn['subtitle']?.toString() ??
                           'Top-return ideas ranked from the latest tracked Indian market snapshot',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.4),
                     ),
                     const SizedBox(height: 12),
                     SurfaceCard(
@@ -2239,6 +2188,111 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 26),
+                  SurfaceCard(
+                    padding: const EdgeInsets.all(18),
+                    accent: AppColors.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            SignalPill(
+                              label:
+                                  aiPrediction['badge']?.toString() ??
+                                  'AI PREDICTION',
+                              tone: SignalTone.primary,
+                            ),
+                            Text(
+                              aiPrediction['symbol']?.toString() ?? '',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          aiPrediction['title']?.toString() ?? '',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: (compactHome
+                                  ? Theme.of(context).textTheme.titleLarge
+                                  : Theme.of(context).textTheme.headlineSmall)
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                height: 1.15,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          aiPrediction['description']?.toString() ?? '',
+                          maxLines: compactHome ? 4 : 5,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.45),
+                        ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth: compactHome ? 200 : 230,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Confidence',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelMedium,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${number(aiPrediction['confidence']).toStringAsFixed(1)}%',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Icon(
+                                  Icons.online_prediction_outlined,
+                                  color: AppColors.primary,
+                                  size: 24,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 26),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -2304,6 +2358,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> {
   late Future<JsonMap> _future;
+  bool _isAddingAsset = false;
 
   @override
   void initState() {
@@ -2331,12 +2386,49 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
       return;
     }
 
-    await widget.repository.addWatchlistAsset(
-      symbol,
-      selected['displayName']?.toString() ?? symbol,
-      0,
-    );
-    setState(() => _future = widget.repository.fetchWatchlist());
+    if (_isAddingAsset) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isAddingAsset = true);
+    try {
+      final watchlist = await _future;
+      final existingSymbols = asListOfMaps(
+        watchlist['assets'],
+      ).map((item) => item['symbol']?.toString().toUpperCase() ?? '').toSet();
+      if (existingSymbols.contains(symbol.toUpperCase())) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('$symbol is already in your watchlist.')),
+        );
+        return;
+      }
+
+      await widget.repository.addWatchlistAsset(
+        symbol,
+        selected['displayName']?.toString() ?? symbol,
+        0,
+      );
+      if (!mounted) return;
+      setState(() => _future = widget.repository.fetchWatchlist());
+      messenger.showSnackBar(
+        SnackBar(content: Text('$symbol added to your watchlist.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isAddingAsset = false);
+      }
+    }
   }
 
   Future<void> _addAsset() => _openSymbolSearch(addToWatchlist: true);
@@ -2393,9 +2485,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _addAsset,
+                        onPressed: _isAddingAsset ? null : _addAsset,
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Asset'),
+                        label: Text(_isAddingAsset ? 'Adding...' : 'Add Asset'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -3107,135 +3199,200 @@ class _StockDetailsScreenState extends State<StockDetailsScreen> {
           }
           final stats = asListOfMaps(data['marketStats']);
           final insights = asListOfMaps(data['insights']);
+          final compactStockDetails = MediaQuery.sizeOf(context).width < 430;
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    widget.symbol.substring(0, 1),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              widget.symbol.substring(0, 1),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      data['companyName']?.toString() ?? '',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineLarge
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    SignalPill(
-                                      label: data['symbol']?.toString() ?? '',
-                                      tone: SignalTone.neutral,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            money(
-                              number(data['price']),
-                              decimals: 2,
-                              compact: false,
                             ),
-                            style: Theme.of(
-                              context,
-                            ).textTheme.displayLarge?.copyWith(fontSize: 46),
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(
-                                number(data['changePct']) >= 0
-                                    ? Icons.arrow_drop_up
-                                    : Icons.arrow_drop_down,
-                                color: number(data['changePct']) >= 0
-                                    ? AppColors.success
-                                    : AppColors.error,
-                              ),
-                              Text(
-                                '${number(data['priceChange']) >= 0 ? '+' : ''}${money(number(data['priceChange']), decimals: 2)} (${signedPercent(number(data['changePct']))})',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: number(data['changePct']) >= 0
-                                          ? AppColors.success
-                                          : AppColors.error,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    SurfaceCard(
-                      padding: const EdgeInsets.all(16),
-                      accent: AppColors.primary,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularScore(
-                            score: number(data['predictionAccuracy']) / 100,
-                            size: 66,
-                          ),
-                          const SizedBox(width: 14),
-                          Column(
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '$appBrandName Prediction Confidence',
-                                style: Theme.of(context).textTheme.labelMedium,
+                                data['companyName']?.toString() ?? '',
+                                style: (compactStockDetails
+                                        ? Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                        : Theme.of(context)
+                                            .textTheme
+                                            .headlineLarge)
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                data['predictionLabel']?.toString() ?? '',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                              SignalPill(
+                                label: data['symbol']?.toString() ?? '',
+                                tone: SignalTone.neutral,
                               ),
-                              const SizedBox(height: 4),
-                              Text(data['predictionNote']?.toString() ?? ''),
                             ],
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        money(
+                          number(data['price']),
+                          decimals: 2,
+                          compact: false,
+                        ),
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.displayLarge
+                            ?.copyWith(fontSize: compactStockDetails ? 40 : 46),
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        Icon(
+                          number(data['changePct']) >= 0
+                              ? Icons.arrow_drop_up
+                              : Icons.arrow_drop_down,
+                          color: number(data['changePct']) >= 0
+                              ? AppColors.success
+                              : AppColors.error,
+                        ),
+                        Text(
+                          '${number(data['priceChange']) >= 0 ? '+' : ''}${money(number(data['priceChange']), decimals: 2)} (${signedPercent(number(data['changePct']))})',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: number(data['changePct']) >= 0
+                                    ? AppColors.success
+                                    : AppColors.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SurfaceCard(
+                      padding: const EdgeInsets.all(16),
+                      accent: AppColors.primary,
+                      child: compactStockDetails
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircularScore(
+                                      score:
+                                          number(data['predictionAccuracy']) /
+                                          100,
+                                      size: 64,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '$appBrandName Prediction Confidence',
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.labelMedium,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            data['predictionLabel']
+                                                    ?.toString() ??
+                                                '',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                                ?.copyWith(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  data['predictionNote']?.toString() ?? '',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                CircularScore(
+                                  score:
+                                      number(data['predictionAccuracy']) / 100,
+                                  size: 66,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$appBrandName Prediction Confidence',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.labelMedium,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        data['predictionLabel']?.toString() ??
+                                            '',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        data['predictionNote']?.toString() ?? '',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
                   ],
                 ),
@@ -3627,76 +3784,356 @@ class ProfileScreen extends StatelessWidget {
           final stats = asListOfMaps(data['stats']);
           final insights = asListOfStrings(data['insights']);
           final security = asListOfStrings(data['security']);
+          final preferences = asListOfMaps(data['preferences']);
+          final portfolioSummary = asMap(data['portfolioSummary']);
+          final sectorExposure = asListOfMaps(
+            portfolioSummary['exposureBySector'],
+          );
+          sectorExposure.sort(
+            (a, b) => number(b['value']).compareTo(number(a['value'])),
+          );
+          final topSectorExposure = sectorExposure.take(3).toList();
+          final preferenceHighlights = preferences
+              .expand((section) {
+                final title = section['title']?.toString() ?? '';
+                return asListOfMaps(section['items']).map(
+                  (item) => {
+                    'section': title,
+                    'label': item['label']?.toString() ?? '',
+                    'value': item['value'],
+                    'kind': item['kind']?.toString() ?? 'detail',
+                  },
+                );
+              })
+              .take(4)
+              .toList();
+          final watchlistCount = data['watchlistCount']?.toString() ?? '0';
+          final notificationCount = data['notificationCount']?.toString() ?? '0';
+          final memberSince = data['memberSince']?.toString() ?? '';
+          final verificationState =
+              data['verificationState']?.toString() ?? 'pending';
+          final compactProfile = MediaQuery.sizeOf(context).width < 390;
+          final pageWidth = MediaQuery.sizeOf(context).width - 32;
+          final profileGridWidth = (pageWidth - 12) / 2;
+          final heroGridWidth = (pageWidth - 44 - 12) / 2;
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.14,
-                      ),
-                      child: Text(
-                        data['avatarInitials']?.toString() ?? 'AV',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFAFBFF), Color(0xFFF0EEFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.outlineSoft),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 22,
+                        offset: Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            data['name']?.toString() ?? '',
-                            style: Theme.of(context).textTheme.headlineLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                          Container(
+                            width: compactProfile ? 72 : 82,
+                            height: compactProfile ? 72 : 82,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFFE7E0FF),
+                                  Color(0xFFDAD7FF),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                data['avatarInitials']?.toString() ?? 'AV',
+                                style: Theme.of(context).textTheme.headlineMedium
+                                    ?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(data['email']?.toString() ?? ''),
-                          const SizedBox(height: 8),
-                          SignalPill(
-                            label: data['role']?.toString() ?? '',
-                            tone: SignalTone.primary,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['name']?.toString() ?? '',
+                                  style: (compactProfile
+                                          ? Theme.of(context)
+                                              .textTheme
+                                              .headlineMedium
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .headlineLarge)
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.05,
+                                      ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  data['email']?.toString() ?? '',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    SignalPill(
+                                      label: data['role']?.toString() ?? '',
+                                      tone: SignalTone.primary,
+                                    ),
+                                    SignalPill(
+                                      label: verificationState == 'verified'
+                                          ? 'Verified Account'
+                                          : 'Verification Pending',
+                                      tone: verificationState == 'verified'
+                                          ? SignalTone.positive
+                                          : SignalTone.neutral,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  data['bio']?.toString() ?? '',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(height: 1.6),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: stats
-                      .map(
-                        (item) => Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              right: item == stats.last ? 0 : 12,
-                            ),
-                            child: MetricMiniCard(
-                              title: item['label']?.toString() ?? '',
-                              value: item['value']?.toString() ?? '',
-                              tone: AppColors.primary,
+                      const SizedBox(height: 18),
+                      Text(
+                        data['bio']?.toString() ?? '',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          height: 1.55,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.68),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.outlineSoft),
+                        ),
+                        child: Text(
+                          data['tierDescription']?.toString() ??
+                              'Advanced workflow access enabled for this account.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(height: 1.45),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          ProfileActionCard(
+                            width: heroGridWidth,
+                            icon: Icons.remove_red_eye_outlined,
+                            title: 'Watchlist',
+                            subtitle: '$watchlistCount tracked',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/watchlist',
                             ),
                           ),
+                          ProfileActionCard(
+                            width: heroGridWidth,
+                            icon: Icons.notifications_active_outlined,
+                            title: 'Alerts',
+                            subtitle: '$notificationCount unread',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/notifications',
+                            ),
+                          ),
+                          ProfileActionCard(
+                            width: heroGridWidth,
+                            icon: Icons.online_prediction_outlined,
+                            title: 'Predict',
+                            subtitle: 'Model outlook',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/predict',
+                            ),
+                          ),
+                          ProfileActionCard(
+                            width: heroGridWidth,
+                            icon: Icons.query_stats_rounded,
+                            title: 'Market',
+                            subtitle: 'Sector pulse',
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/market',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: stats
+                      .map(
+                        (item) => ProfileStatCard(
+                          title: item['label']?.toString() ?? '',
+                          value: item['value']?.toString() ?? '',
+                          width: compactProfile ? profileGridWidth : 236,
                         ),
                       )
                       .toList(),
                 ),
                 const SizedBox(height: 18),
+                SurfaceCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Portfolio Pulse',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          SignalPill(
+                            label: memberSince.isEmpty
+                                ? 'Active Member'
+                                : 'Since $memberSince',
+                            tone: SignalTone.neutral,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Portfolio Value',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    money(
+                                      number(data['portfolioValue']),
+                                      decimals: 2,
+                                      compact: false,
+                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF162234),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Activity',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(color: Colors.white70),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$watchlistCount tracked • $notificationCount alerts',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (topSectorExposure.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Top exposure by sector',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        ...topSectorExposure.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: ProfileSectorBar(
+                              label: item['sector']?.toString() ?? '',
+                              value: number(item['value']),
+                              maxValue: number(
+                                topSectorExposure.first['value'],
+                              ).clamp(1, double.infinity),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 SurfaceCard(
                   padding: const EdgeInsets.all(18),
                   child: Column(
@@ -3711,19 +4148,48 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       ...insights.map(
                         (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.auto_awesome,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(item)),
-                            ],
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ProfileInsightTile(
+                            icon: Icons.auto_awesome,
+                            title: item,
+                            color: AppColors.primary,
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SurfaceCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Automation & Preferences',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...preferenceHighlights.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ProfilePreferenceTile(
+                            section: item['section']?.toString() ?? '',
+                            label: item['label']?.toString() ?? '',
+                            value: item['value'],
+                            kind: item['kind']?.toString() ?? 'detail',
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          '/settings',
+                        ),
+                        icon: const Icon(Icons.tune_rounded),
+                        label: const Text('Open Settings'),
                       ),
                     ],
                   ),
@@ -3744,96 +4210,402 @@ class ProfileScreen extends StatelessWidget {
                       ...security.map(
                         (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.verified_user_outlined,
-                                size: 18,
-                                color: AppColors.secondary,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(item)),
-                            ],
+                          child: ProfileInsightTile(
+                            icon: Icons.verified_user_outlined,
+                            title: item,
+                            color: AppColors.secondary,
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          children: [
+                            InfoRow(
+                              label: 'Location',
+                              value: data['location']?.toString() ?? '',
+                            ),
+                            const SizedBox(height: 10),
+                            InfoRow(
+                              label: 'Risk Profile',
+                              value: data['riskProfile']?.toString() ?? '',
+                            ),
+                            const SizedBox(height: 10),
+                            InfoRow(
+                              label: 'Verification',
+                              value: verificationState == 'verified'
+                                  ? 'Verified'
+                                  : 'Pending',
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                SurfaceCard(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Workspace',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      InfoRow(
-                        label: 'Location',
-                        value: data['location']?.toString() ?? '',
-                      ),
-                      InfoRow(
-                        label: 'Risk Profile',
-                        value: data['riskProfile']?.toString() ?? '',
-                      ),
-                      InfoRow(
-                        label: 'Portfolio Value',
-                        value: money(
-                          number(data['portfolioValue']),
-                          decimals: 2,
-                          compact: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/settings'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.onSurface,
-                          side: const BorderSide(
-                            color: AppColors.outlineVariant,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text('Settings'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pushNamed(context, '/admin'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text('Admin Panel'),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class ProfileActionCard extends StatelessWidget {
+  const ProfileActionCard({
+    super.key,
+    required this.width,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final double width;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: width,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFFFFF), Color(0xFFF6F4FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.outlineSoft),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 18,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: AppColors.primary),
+                ),
+                const Spacer(),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 16,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'Open',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProfileStatCard extends StatelessWidget {
+  const ProfileStatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.width,
+  });
+
+  final String title;
+  final String value;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLowest,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.outlineSoft),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.insights_rounded,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 6,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: title.toLowerCase().contains('accuracy')
+                    ? 0.9
+                    : title.toLowerCase().contains('wins')
+                    ? 0.67
+                    : 0.78,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryContainer],
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileInsightTile extends StatelessWidget {
+  const ProfileInsightTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfilePreferenceTile extends StatelessWidget {
+  const ProfilePreferenceTile({
+    super.key,
+    required this.section,
+    required this.label,
+    required this.value,
+    required this.kind,
+  });
+
+  final String section;
+  final String label;
+  final dynamic value;
+  final String kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final valueLabel = value is bool
+        ? (value ? 'Enabled' : 'Disabled')
+        : value?.toString() ?? '';
+    final tone = value is bool
+        ? (value ? SignalTone.positive : SignalTone.neutral)
+        : SignalTone.primary;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(section, style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SignalPill(label: valueLabel, tone: tone),
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileSectorBar extends StatelessWidget {
+  const ProfileSectorBar({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.maxValue,
+  });
+
+  final String label;
+  final double value;
+  final double maxValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = maxValue <= 0
+        ? 0.0
+        : (value / maxValue).clamp(0.0, 1.0);
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurface,
+                ),
+              ),
+            ),
+            Text(
+              money(value, decimals: 0, compact: true),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: AppColors.surfaceHigh,
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -4210,12 +4982,14 @@ class SurfaceCard extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(color: AppColors.outlineSoft),
           ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (accent != null)
-                  Container(
+          child: Stack(
+            children: [
+              if (accent != null)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
                     width: 4,
                     decoration: BoxDecoration(
                       color: accent,
@@ -4224,11 +4998,14 @@ class SurfaceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                Expanded(
-                  child: Padding(padding: padding, child: child),
                 ),
-              ],
-            ),
+              Padding(
+                padding: padding.add(
+                  EdgeInsets.only(left: accent != null ? 4 : 0),
+                ),
+                child: child,
+              ),
+            ],
           ),
         ),
       ),
