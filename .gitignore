@@ -2,6 +2,8 @@ stitch_neural_market_predictor/
 .playwright-mcp/
 
 backend/node_modules/
+backend/data/appdb.json
+backend/data/users.json
 backend/*_stdout.log
 backend/*_stderr.log
 ml_service/.venv/
@@ -34,3 +36,10 @@ india_app_check2.png
 phone_capture.bin
 phone_capture.png
 phone_screen.png
+window_dump*.xml
+flutter_*check*.png
+flutter_*check*.bin
+india_*check*.png
+india_*check*.bin
+*_attach*.png
+*_attach*.bin
