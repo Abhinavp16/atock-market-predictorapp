@@ -1,8 +1,9 @@
 const { loadSymbolMaster } = require("./symbolMaster");
 const fallback = require("./marketFallback");
 const { PythonMarketClient } = require("./pythonClient");
+const { config } = require("./config");
 
-const FALLBACK_ENABLED = process.env.ML_FALLBACK_ENABLED !== "false";
+const FALLBACK_ENABLED = config.ml.fallbackEnabled;
 const pythonClient = new PythonMarketClient();
 
 function formatCompactRupee(value) {
@@ -31,12 +32,43 @@ async function withFallback(label, primary, secondary) {
   }
 }
 
-async function searchSymbols(query) {
+async function searchSymbols(query, filters = {}) {
   return withFallback(
     "searchSymbols",
-    () => pythonClient.searchSymbols(query),
-    () => fallback.searchSymbols(query),
+    async () => {
+      const result = await pythonClient.searchSymbols(query);
+      return applySymbolFilters(result, filters);
+    },
+    () => applySymbolFilters(fallback.searchSymbols(query), filters),
   );
+}
+
+function applySymbolFilters(result, filters) {
+  const sector = String(filters.sector || "").trim().toLowerCase();
+  const marketCapBucket = String(filters.marketCapBucket || "").trim().toLowerCase();
+  const sort = String(filters.sort || "").trim().toLowerCase();
+  let items = [...(result.items || [])];
+  if (sector) {
+    items = items.filter((item) => String(item.sector || "").toLowerCase() === sector);
+  }
+  if (marketCapBucket) {
+    items = items.filter((item) => String(item.marketCapBucket || "").toLowerCase() === marketCapBucket);
+  }
+  if (sort === "name") {
+    items.sort((left, right) => left.displayName.localeCompare(right.displayName));
+  } else if (sort === "symbol") {
+    items.sort((left, right) => left.symbol.localeCompare(right.symbol));
+  }
+  return {
+    ...result,
+    count: items.length,
+    items,
+    filtersApplied: {
+      sector: filters.sector || null,
+      marketCapBucket: filters.marketCapBucket || null,
+      sort: filters.sort || null,
+    },
+  };
 }
 
 async function getQuote(symbol) {
@@ -67,7 +99,16 @@ async function getPrediction(symbol) {
   return withFallback(
     `getPrediction:${symbol}`,
     () => pythonClient.getPrediction(symbol),
-    () => fallback.predictionForSymbol(symbol),
+    async () => ({
+      ...fallback.predictionForSymbol(symbol),
+      source: "fallback",
+      modelVersion: "fallback-simulated-v1",
+      explanation:
+        "Fallback mode is active because the ML service is offline or unavailable. The confidence score comes from the deterministic simulation engine.",
+      metrics: {
+        sourceHealth: "offline",
+      },
+    }),
   );
 }
 
@@ -258,6 +299,96 @@ async function buildAnalytics() {
   );
 }
 
+async function getMarketMovers() {
+  const snapshotSymbols = loadSymbolMaster().slice(0, 40).map((item) => item.symbol);
+  const quotes = await Promise.all(snapshotSymbols.map((symbol) => getQuote(symbol)));
+  const sorted = [...quotes].sort((left, right) => right.changePct - left.changePct);
+  return {
+    gainers: sorted.slice(0, 5),
+    losers: [...sorted].reverse().slice(0, 5),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+async function compareSymbols(symbols) {
+  const requested = Array.from(
+    new Set(
+      symbols
+        .map((item) => String(item || "").trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ).slice(0, 5);
+  const comparison = await Promise.all(
+    requested.map(async (symbol) => {
+      const [quote, company, prediction] = await Promise.all([
+        getQuote(symbol),
+        getCompany(symbol),
+        getPrediction(symbol),
+      ]);
+      return {
+        symbol: quote.symbol,
+        displayName: quote.displayName,
+        sector: quote.sector,
+        price: quote.currentPrice,
+        changePct: quote.changePct,
+        peRatio: company.peRatio,
+        dividendYield: company.dividendYield,
+        marketCap: company.marketCap,
+        prediction: {
+          direction: prediction.direction,
+          confidence: prediction.confidence,
+          source: prediction.source || prediction.availability || "model",
+        },
+      };
+    }),
+  );
+  return {
+    symbols: comparison,
+    comparedCount: comparison.length,
+  };
+}
+
+async function screenSymbols(filters = {}) {
+  const limit = Number(filters.limit || 20);
+  const sourceSymbols = loadSymbolMaster()
+    .filter((item) => {
+      if (filters.sector && item.sector !== filters.sector) return false;
+      if (filters.marketCapBucket && item.marketCapBucket !== filters.marketCapBucket) return false;
+      return true;
+    })
+    .slice(0, 60)
+    .map((item) => item.symbol);
+
+  const companies = await Promise.all(
+    sourceSymbols.map(async (symbol) => {
+      const [quote, company] = await Promise.all([getQuote(symbol), getCompany(symbol)]);
+      return {
+        symbol: quote.symbol,
+        displayName: quote.displayName,
+        sector: quote.sector,
+        marketCapBucket: quote.marketCapBucket,
+        price: quote.currentPrice,
+        changePct: quote.changePct,
+        peRatio: company.peRatio,
+        pbRatio: company.pbRatio,
+        dividendYield: company.dividendYield,
+      };
+    }),
+  );
+
+  const filtered = companies
+    .filter((item) => (filters.minPe === undefined ? true : item.peRatio >= filters.minPe))
+    .filter((item) => (filters.maxPe === undefined ? true : item.peRatio <= filters.maxPe))
+    .filter((item) => (filters.minDividendYield === undefined ? true : item.dividendYield >= filters.minDividendYield))
+    .slice(0, limit);
+
+  return {
+    count: filtered.length,
+    items: filtered,
+    filtersApplied: filters,
+  };
+}
+
 async function buildStockDetails(symbol) {
   return withFallback(
     `buildStockDetails:${symbol}`,
@@ -349,5 +480,8 @@ module.exports = {
   buildDashboard,
   buildAnalytics,
   buildStockDetails,
+  getMarketMovers,
+  compareSymbols,
+  screenSymbols,
   pythonClient,
 };
