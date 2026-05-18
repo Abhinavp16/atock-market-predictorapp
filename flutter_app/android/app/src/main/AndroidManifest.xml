@@ -2,8 +2,8 @@
     <application
         android:label="NiveshIQ"
         android:name="${applicationName}"
-        android:icon="@drawable/niveshiq_icon"
-        android:roundIcon="@drawable/niveshiq_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
